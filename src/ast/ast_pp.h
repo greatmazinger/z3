@@ -18,10 +18,10 @@ Revision History:
     2012-11-17 - ast_smt2_pp is the official pretty printer in Z3
 
 --*/
-#ifndef _AST_PP_H_
-#define _AST_PP_H_
+#ifndef AST_PP_H_
+#define AST_PP_H_
 
-#include"ast_smt2_pp.h"
+#include "ast/ast_smt2_pp.h"
 
 struct mk_pp : public mk_ismt2_pp {
     mk_pp(ast * t, ast_manager & m, params_ref const & p, unsigned indent = 0, unsigned num_vars = 0, char const * var_prefix = 0):

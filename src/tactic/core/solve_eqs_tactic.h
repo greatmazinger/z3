@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SOLVE_EQS_TACTIC_H_
-#define _SOLVE_EQS_TACTIC_H_
+#ifndef SOLVE_EQS_TACTIC_H_
+#define SOLVE_EQS_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 class expr_replacer;

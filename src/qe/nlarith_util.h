@@ -17,11 +17,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _NLARITH_UTIL_H_
-#define _NLARITH_UTIL_H_
+#ifndef NLARITH_UTIL_H_
+#define NLARITH_UTIL_H_
 
-#include "ast.h"
-#include "lbool.h"
+#include "ast/ast.h"
+#include "util/lbool.h"
 
 namespace nlarith {
 

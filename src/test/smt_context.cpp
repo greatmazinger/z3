@@ -1,5 +1,11 @@
-#include "smt_context.h"
-#include "reg_decl_plugins.h"
+
+/*++
+Copyright (c) 2015 Microsoft Corporation
+
+--*/
+
+#include "smt/smt_context.h"
+#include "ast/reg_decl_plugins.h"
 
 void tst_smt_context()
 {

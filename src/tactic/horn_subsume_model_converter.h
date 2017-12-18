@@ -32,11 +32,11 @@ Subsumption transformation (remove Horn clause):
 
 --*/
 
-#ifndef _HORN_SUBSUME_MODEL_CONVERTER_H_
-#define _HORN_SUBSUME_MODEL_CONVERTER_H_
+#ifndef HORN_SUBSUME_MODEL_CONVERTER_H_
+#define HORN_SUBSUME_MODEL_CONVERTER_H_
 
-#include "model_converter.h"
-#include "th_rewriter.h"
+#include "tactic/model_converter.h"
+#include "ast/rewriter/th_rewriter.h"
 
 class horn_subsume_model_converter : public model_converter {
     ast_manager&    m;
@@ -72,7 +72,7 @@ public:
 
     void insert(func_decl* p, expr* body) { m_funcs.push_back(p); m_bodies.push_back(body); }
     
-    virtual void operator()(model_ref& m);
+    virtual void operator()(model_ref& _m);
 
     virtual model_converter * translate(ast_translation & translator);
 

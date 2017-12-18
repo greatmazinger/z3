@@ -15,21 +15,22 @@ Author:
 Notes:
 
 --*/
-#include"cmd_context.h"
-#include"version.h"
-#include"ast_smt_pp.h"
-#include"ast_smt2_pp.h"
-#include"ast_pp.h"
-#include"model_smt2_pp.h"
-#include"model_v2_pp.h"
-#include"array_decl_plugin.h"
-#include"pp.h"
-#include"cmd_util.h"
-#include"simplify_cmd.h"
-#include"eval_cmd.h"
-#include"gparams.h"
-#include"model_params.hpp"
-#include"env_params.h"
+#include "util/gparams.h"
+#include "util/env_params.h"
+#include "util/version.h"
+#include "ast/ast_smt_pp.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/ast_pp_dot.h"
+#include "ast/ast_pp.h"
+#include "ast/array_decl_plugin.h"
+#include "ast/pp.h"
+#include "ast/well_sorted.h"
+#include "ast/pp_params.hpp"
+#include "model/model_smt2_pp.h"
+#include "cmd_context/cmd_context.h"
+#include "cmd_context/cmd_util.h"
+#include "cmd_context/simplify_cmd.h"
+#include "cmd_context/eval_cmd.h"
 
 class help_cmd : public cmd {
     svector<symbol> m_cmds;
@@ -39,7 +40,7 @@ class help_cmd : public cmd {
         ctx.regular_stream() << " (" << s;
         if (usage)
             ctx.regular_stream() << " " << escaped(usage, true) << ")\n";
-        else 
+        else
             ctx.regular_stream() << ")\n";
         if (descr) {
             ctx.regular_stream() << "    " << escaped(descr, true, 4) << "\n";
@@ -62,7 +63,7 @@ public:
         }
         m_cmds.push_back(s);
     }
-    
+
     typedef std::pair<symbol, cmd*> named_cmd;
     struct named_cmd_lt {
         bool operator()(named_cmd const & c1, named_cmd const & c2) const { return c1.first.str() < c2.first.str(); }
@@ -79,19 +80,15 @@ public:
             }
             // named_cmd_lt is not a total order for commands, but this is irrelevant for Linux x Windows behavior
             std::sort(cmds.begin(), cmds.end(), named_cmd_lt());
-            vector<named_cmd>::const_iterator it2  = cmds.begin();
-            vector<named_cmd>::const_iterator end2 = cmds.end();
-            for (; it2 != end2; ++it2) {
-                display_cmd(ctx, it2->first, it2->second);
+            for (named_cmd const& nc : cmds) {
+                display_cmd(ctx, nc.first, nc.second);
             }
         }
         else {
-            svector<symbol>::const_iterator it  = m_cmds.begin();
-            svector<symbol>::const_iterator end = m_cmds.end();
-            for (; it != end; ++it) {
-                cmd * c = ctx.find_cmd(*it);
+            for (symbol const& s : m_cmds) {
+                cmd * c = ctx.find_cmd(s);
                 SASSERT(c);
-                display_cmd(ctx, *it, c);
+                display_cmd(ctx, s, c);
             }
         }
         ctx.regular_stream() << "\"\n";
@@ -100,23 +97,34 @@ public:
 
 ATOMIC_CMD(exit_cmd, "exit", "exit.", ctx.print_success(); throw stop_parser_exception(););
 
-ATOMIC_CMD(get_model_cmd, "get-model", "retrieve model for the last check-sat command", {
-    if (!ctx.is_model_available() || ctx.get_check_sat_result() == 0)
-        throw cmd_exception("model is not available");
-    model_ref m;
-    ctx.get_check_sat_result()->get_model(m);
-    model_params p;
-    if (p.v1() || p.v2()) {
-        std::ostringstream buffer;
-        model_v2_pp(buffer, *m, p.partial());
-        ctx.regular_stream() << "\"" << escaped(buffer.str().c_str(), true) << "\"" << std::endl;
-    } else {
-        ctx.regular_stream() << "(model " << std::endl;
-        model_smt2_pp(ctx.regular_stream(), ctx, *(m.get()), 2);
-        // m->display(ctx.regular_stream());
-        ctx.regular_stream() << ")" << std::endl;
+class get_model_cmd : public cmd {
+    unsigned m_index;
+public:
+    get_model_cmd(): cmd("get-model"), m_index(0) {}
+    virtual char const * get_usage() const { return "[<index of box objective>]"; }
+    virtual char const * get_descr(cmd_context & ctx) const {
+        return "retrieve model for the last check-sat command.\nSupply optional index if retrieving a model corresponding to a box optimization objective";
     }
-});
+    virtual unsigned get_arity() const { return VAR_ARITY; }
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { return CPK_UINT; }
+    virtual void set_next_arg(cmd_context & ctx, unsigned index) { m_index = index; }
+    virtual void execute(cmd_context & ctx) {
+        if (!ctx.is_model_available() || ctx.get_check_sat_result() == 0)
+            throw cmd_exception("model is not available");
+        model_ref m;
+        if (m_index > 0 && ctx.get_opt()) {
+            ctx.get_opt()->get_box_model(m, m_index);
+        }
+        else {
+            ctx.get_check_sat_result()->get_model(m);
+        }
+        ctx.display_model(m);
+    }
+    virtual void reset(cmd_context& ctx) {
+        m_index = 0;
+    }
+};
+
 
 ATOMIC_CMD(get_assignment_cmd, "get-assignment", "retrieve assignment", {
     if (!ctx.is_model_available() || ctx.get_check_sat_result() == 0)
@@ -124,21 +132,29 @@ ATOMIC_CMD(get_assignment_cmd, "get-assignment", "retrieve assignment", {
     model_ref m;
     ctx.get_check_sat_result()->get_model(m);
     ctx.regular_stream() << "(";
-    dictionary<cmd_context::macro> const & macros = ctx.get_macros();
-    dictionary<cmd_context::macro>::iterator it  = macros.begin();
-    dictionary<cmd_context::macro>::iterator end = macros.end();
-    for (bool first = true; it != end; ++it) {
-        symbol const & name = (*it).m_key;
-        cmd_context::macro const & _m    = (*it).m_value;
-        if (_m.first == 0 && ctx.m().is_bool(_m.second)) {
-            expr_ref val(ctx.m());
-            m->eval(_m.second, val, true);
-            if (ctx.m().is_true(val) || ctx.m().is_false(val)) {
-                if (first)
-                    first = false;
-                else
-                    ctx.regular_stream() << " ";
-                ctx.regular_stream() << "(" << name << " " << (ctx.m().is_true(val) ? "true" : "false") << ")";
+    dictionary<macro_decls> const & macros = ctx.get_macros();
+    bool first = true;
+    for (auto const& kv : macros) {
+        symbol const & name = kv.m_key;
+        macro_decls const & _m    = kv.m_value;
+        for (auto md : _m) {
+            if (md.m_domain.size() == 0 && ctx.m().is_bool(md.m_body)) {
+                expr_ref val(ctx.m());
+                m->eval(md.m_body, val, true);
+                if (ctx.m().is_true(val) || ctx.m().is_false(val)) {
+                    if (first)
+                        first = false;
+                    else
+                        ctx.regular_stream() << " ";
+                    ctx.regular_stream() << "(";
+                    if (is_smt2_quoted_symbol(name)) {
+                        ctx.regular_stream() << mk_smt2_quoted_symbol(name);
+                    }
+                    else {
+                        ctx.regular_stream() << name;
+                    }
+                    ctx.regular_stream() << " " << (ctx.m().is_true(val) ? "true" : "false") << ")";
+                }
             }
         }
     }
@@ -149,11 +165,11 @@ class cmd_is_declared : public ast_smt_pp::is_declared {
     cmd_context& m_ctx;
 public:
     cmd_is_declared(cmd_context& ctx): m_ctx(ctx) {}
-    
-    virtual bool operator()(func_decl* d) const { 
+
+    virtual bool operator()(func_decl* d) const {
         return m_ctx.is_func_decl(d->get_name());
     }
-    virtual bool operator()(sort* s) const { 
+    virtual bool operator()(sort* s) const {
         return m_ctx.is_sort_decl(s->get_name());
     }
 };
@@ -168,35 +184,78 @@ ATOMIC_CMD(get_proof_cmd, "get-proof", "retrieve proof", {
     pr = ctx.get_check_sat_result()->get_proof();
     if (pr == 0)
         throw cmd_exception("proof is not available");
-    // TODO: reimplement a new SMT2 pretty printer 
-    ast_smt_pp pp(ctx.m());
-    cmd_is_declared isd(ctx);
-    pp.set_is_declared(&isd);
-    pp.set_logic(ctx.get_logic().str().c_str());
-    pp.display_smt2(ctx.regular_stream(), pr);
-    ctx.regular_stream() << std::endl;
+    if (ctx.well_sorted_check_enabled() && !is_well_sorted(ctx.m(), pr)) {
+        throw cmd_exception("proof is not well sorted");
+    }
+
+    pp_params params;
+    if (params.pretty_proof()) {
+        ctx.regular_stream() << mk_pp(pr, ctx.m()) << std::endl;
+    }
+    else {
+        // TODO: reimplement a new SMT2 pretty printer
+        ast_smt_pp pp(ctx.m());
+        cmd_is_declared isd(ctx);
+        pp.set_is_declared(&isd);
+        pp.set_logic(ctx.get_logic());
+        pp.display_smt2(ctx.regular_stream(), pr);
+        ctx.regular_stream() << std::endl;
+    }
 });
 
-ATOMIC_CMD(get_unsat_core_cmd, "get-unsat-core", "retrieve unsat core", {
-    if (!ctx.produce_unsat_cores())
-        throw cmd_exception("unsat core construction is not enabled, use command (set-option :produce-unsat-cores true)");
+ATOMIC_CMD(get_proof_graph_cmd, "get-proof-graph", "retrieve proof and print it in graphviz", {
+    if (!ctx.produce_proofs())
+        throw cmd_exception("proof construction is not enabled, use command (set-option :produce-proofs true)");
     if (!ctx.has_manager() ||
         ctx.cs_state() != cmd_context::css_unsat)
-        throw cmd_exception("unsat core is not available");
+        throw cmd_exception("proof is not available");
+    proof_ref pr(ctx.m());
+    pr = ctx.get_check_sat_result()->get_proof();
+    if (pr == 0)
+        throw cmd_exception("proof is not available");
+    if (ctx.well_sorted_check_enabled() && !is_well_sorted(ctx.m(), pr)) {
+        throw cmd_exception("proof is not well sorted");
+    }
+
+    context_params& params = ctx.params();
+    const std::string& file = params.m_dot_proof_file;
+    std::ofstream out(file);
+    out << ast_pp_dot(pr) << std::endl;
+});
+
+static void print_core(cmd_context& ctx) {
     ptr_vector<expr> core;
     ctx.get_check_sat_result()->get_unsat_core(core);
     ctx.regular_stream() << "(";
-    ptr_vector<expr>::const_iterator it  = core.begin();
-    ptr_vector<expr>::const_iterator end = core.end();
-    for (bool first = true; it != end; ++it) {
-        if (first)
-            first = false;
-        else
-            ctx.regular_stream() << " ";
-        ctx.regular_stream() << mk_ismt2_pp(*it, ctx.m());
+    bool first = true;
+    for (expr* e : core) {
+    if (first)
+        first = false;
+    else
+        ctx.regular_stream() << " ";
+    ctx.regular_stream() << mk_ismt2_pp(e, ctx.m());
     }
     ctx.regular_stream() << ")" << std::endl;
-});
+}
+
+ATOMIC_CMD(get_unsat_core_cmd, "get-unsat-core", "retrieve unsat core", {
+        if (!ctx.produce_unsat_cores())
+            throw cmd_exception("unsat core construction is not enabled, use command (set-option :produce-unsat-cores true)");
+        if (!ctx.has_manager() ||
+            ctx.cs_state() != cmd_context::css_unsat)
+            throw cmd_exception("unsat core is not available");
+        print_core(ctx);
+    });
+
+ATOMIC_CMD(get_unsat_assumptions_cmd, "get-unsat-assumptions", "retrieve subset of assumptions sufficient for unsatisfiability", {
+        if (!ctx.produce_unsat_assumptions())
+            throw cmd_exception("unsat assumptions construction is not enabled, use command (set-option :produce-unsat-assumptions true)");
+        if (!ctx.has_manager() || ctx.cs_state() != cmd_context::css_unsat) {
+            throw cmd_exception("unsat assumptions is not available");
+        }
+        print_core(ctx);
+    });
+
 
 ATOMIC_CMD(labels_cmd, "labels", "retrieve Simplify-like labels", {
     if (!ctx.has_manager() ||
@@ -213,19 +272,29 @@ ATOMIC_CMD(labels_cmd, "labels", "retrieve Simplify-like labels", {
 
 ATOMIC_CMD(get_assertions_cmd, "get-assertions", "retrieve asserted terms when in interactive mode", ctx.display_assertions(););
 
-UNARY_CMD(set_logic_cmd, "set-logic", "<symbol>", "set the background logic.", CPK_SYMBOL, symbol const &, 
+
+
+
+ATOMIC_CMD(reset_assertions_cmd, "reset-assertions", "reset all asserted formulas (but retain definitions and declarations)", ctx.reset_assertions(); ctx.print_success(););
+
+UNARY_CMD(set_logic_cmd, "set-logic", "<symbol>", "set the background logic.", CPK_SYMBOL, symbol const &,
           if (ctx.set_logic(arg))
               ctx.print_success();
-          else
-              ctx.print_unsupported(symbol::null);
+          else {
+              std::string msg = "ignoring unsupported logic " + arg.str();
+              ctx.print_unsupported(symbol(msg.c_str()), m_line, m_pos);
+          }
           );
 
-UNARY_CMD(pp_cmd, "display", "<term>", "display the given term.", CPK_EXPR, expr *, { 
+UNARY_CMD(pp_cmd, "display", "<term>", "display the given term.", CPK_EXPR, expr *, {
     ctx.display(ctx.regular_stream(), arg);
-    ctx.regular_stream() << std::endl; 
+    ctx.regular_stream() << std::endl;
 });
 
-UNARY_CMD(echo_cmd, "echo", "<string>", "display the given string", CPK_STRING, char const *, ctx.regular_stream() << arg << std::endl;);
+UNARY_CMD(echo_cmd, "echo", "<string>", "display the given string", CPK_STRING, char const *,
+    bool smt2c = ctx.params().m_smtlib2_compliant;
+    ctx.regular_stream() << (smt2c ? "\"" : "") << arg << (smt2c ? "\"" : "") << std::endl;);
+
 
 class set_get_option_cmd : public cmd {
 protected:
@@ -235,33 +304,38 @@ protected:
     symbol      m_print_success;
     symbol      m_print_warning;
     symbol      m_expand_definitions;
-    symbol      m_interactive_mode;
+    symbol      m_interactive_mode;    // deprecated by produce-assertions
     symbol      m_produce_proofs;
     symbol      m_produce_unsat_cores;
+    symbol      m_produce_unsat_assumptions;
     symbol      m_produce_models;
     symbol      m_produce_assignments;
     symbol      m_produce_interpolants;
+    symbol      m_produce_assertions;
     symbol      m_regular_output_channel;
     symbol      m_diagnostic_output_channel;
     symbol      m_random_seed;
     symbol      m_verbosity;
     symbol      m_global_decls;
+    symbol      m_global_declarations;
     symbol      m_numeral_as_real;
     symbol      m_error_behavior;
     symbol      m_int_real_coercions;
+    symbol      m_reproducible_resource_limit;
 
     bool is_builtin_option(symbol const & s) const {
-        return 
-            s == m_print_success || s == m_print_warning || s == m_expand_definitions || 
-            s == m_interactive_mode || s == m_produce_proofs || s == m_produce_unsat_cores ||
+        return
+            s == m_print_success || s == m_print_warning || s == m_expand_definitions ||
+            s == m_interactive_mode || s == m_produce_proofs || s == m_produce_unsat_cores || s == m_produce_unsat_assumptions ||
             s == m_produce_models || s == m_produce_assignments || s == m_produce_interpolants ||
-        s == m_regular_output_channel || s == m_diagnostic_output_channel || 
-            s == m_random_seed || s == m_verbosity || s == m_global_decls;
+            s == m_regular_output_channel || s == m_diagnostic_output_channel ||
+            s == m_random_seed || s == m_verbosity || s == m_global_decls || s == m_global_declarations ||
+            s == m_produce_assertions || s == m_reproducible_resource_limit;
     }
 
 public:
     set_get_option_cmd(char const * name):
-        cmd(name), 
+        cmd(name),
         m_true("true"),
         m_false("false"),
         m_print_success(":print-success"),
@@ -270,17 +344,21 @@ public:
         m_interactive_mode(":interactive-mode"),
         m_produce_proofs(":produce-proofs"),
         m_produce_unsat_cores(":produce-unsat-cores"),
+        m_produce_unsat_assumptions(":produce-unsat-assumptions"),
         m_produce_models(":produce-models"),
         m_produce_assignments(":produce-assignments"),
         m_produce_interpolants(":produce-interpolants"),
+        m_produce_assertions(":produce-assertions"),
         m_regular_output_channel(":regular-output-channel"),
         m_diagnostic_output_channel(":diagnostic-output-channel"),
         m_random_seed(":random-seed"),
         m_verbosity(":verbosity"),
         m_global_decls(":global-decls"),
+        m_global_declarations(":global-declarations"),
         m_numeral_as_real(":numeral-as-real"),
         m_error_behavior(":error-behavior"),
-        m_int_real_coercions(":int-real-coercions") {
+        m_int_real_coercions(":int-real-coercions"),
+        m_reproducible_resource_limit(":reproducible-resource-limit") {
     }
     virtual ~set_get_option_cmd() {}
 
@@ -289,7 +367,7 @@ public:
 class set_option_cmd : public set_get_option_cmd {
     bool        m_unsupported;
     symbol      m_option;
-    
+
     bool to_bool(symbol const & value) const {
         if (value != m_true && value != m_false)
             throw cmd_exception("invalid option value, true/false expected");
@@ -310,7 +388,7 @@ class set_option_cmd : public set_get_option_cmd {
             throw cmd_exception(msg);
         }
     }
-    
+
     void set_param(cmd_context & ctx, char const * value) {
         try {
             gparams::set(m_option, value);
@@ -332,8 +410,9 @@ class set_option_cmd : public set_get_option_cmd {
         else if (m_option == m_expand_definitions) {
             m_unsupported = true;
         }
-        else if (m_option == m_interactive_mode) {
-            check_not_initialized(ctx, m_interactive_mode);
+        else if (m_option == m_interactive_mode ||
+                 m_option == m_produce_assertions) {
+            check_not_initialized(ctx, m_produce_assertions);
             ctx.set_interactive_mode(to_bool(value));
         }
         else if (m_option == m_produce_proofs) {
@@ -348,13 +427,17 @@ class set_option_cmd : public set_get_option_cmd {
             check_not_initialized(ctx, m_produce_unsat_cores);
             ctx.set_produce_unsat_cores(to_bool(value));
         }
+        else if (m_option == m_produce_unsat_assumptions) {
+            check_not_initialized(ctx, m_produce_unsat_assumptions);
+            ctx.set_produce_unsat_assumptions(to_bool(value));
+        }
         else if (m_option == m_produce_models) {
             ctx.set_produce_models(to_bool(value));
         }
         else if (m_option == m_produce_assignments) {
             ctx.set_produce_assignments(to_bool(value));
         }
-        else if (m_option == m_global_decls) {
+        else if (m_option == m_global_decls || m_option == m_global_declarations) {
             check_not_initialized(ctx, m_global_decls);
             ctx.set_global_decls(to_bool(value));
         }
@@ -402,11 +485,11 @@ public:
 
     virtual void prepare(cmd_context & ctx) { m_unsupported = false; m_option = symbol::null; }
 
-    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const {
         return m_option == symbol::null ? CPK_KEYWORD : CPK_OPTION_VALUE;
     }
 
-    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) { 
+    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) {
         if (m_option == symbol::null) {
             m_option = opt;
         }
@@ -418,6 +501,9 @@ public:
     virtual void set_next_arg(cmd_context & ctx, rational const & val) {
         if (m_option == m_random_seed) {
             ctx.set_random_seed(to_unsigned(val));
+        }
+        else if (m_option == m_reproducible_resource_limit) {
+            ctx.params().m_rlimit = to_unsigned(val);
         }
         else if (m_option == m_verbosity) {
             set_verbosity_level(to_unsigned(val));
@@ -448,7 +534,7 @@ public:
 
     virtual void execute(cmd_context & ctx) {
         if (m_unsupported)
-            ctx.print_unsupported(m_option);
+            ctx.print_unsupported(m_option, m_line, m_pos);
         else
             ctx.print_success();
     }
@@ -458,7 +544,7 @@ class get_option_cmd : public set_get_option_cmd {
     static void print_bool(cmd_context & ctx, bool b) {
         ctx.regular_stream() << (b ? "true" : "false") << std::endl;
     }
-    
+
     static void print_unsigned(cmd_context & ctx, unsigned v) {
         ctx.regular_stream() << v << std::endl;
     }
@@ -475,18 +561,18 @@ public:
     virtual char const * get_descr(cmd_context & ctx) const { return "get configuration option."; }
     virtual unsigned get_arity() const { return 1; }
     virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { return CPK_KEYWORD; }
-    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) { 
+    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) {
         if (opt == m_print_success) {
-            print_bool(ctx, ctx.print_success_enabled()); 
+            print_bool(ctx, ctx.print_success_enabled());
         }
-        // TODO: 
+        // TODO:
         // else if (opt == m_print_warning) {
         // print_bool(ctx, );
         // }
         else if (opt == m_expand_definitions) {
-            ctx.print_unsupported(m_expand_definitions);
+            ctx.print_unsupported(m_expand_definitions, m_line, m_pos);
         }
-        else if (opt == m_interactive_mode) {
+        else if (opt == m_interactive_mode || opt == m_produce_assertions) {
             print_bool(ctx, ctx.interactive_mode());
         }
         else if (opt == m_produce_proofs) {
@@ -504,7 +590,7 @@ public:
         else if (opt == m_produce_assignments) {
             print_bool(ctx, ctx.produce_assignments());
         }
-        else if (opt == m_global_decls) {
+        else if (opt == m_global_decls || opt == m_global_declarations) {
             print_bool(ctx, ctx.global_decls());
         }
         else if (opt == m_random_seed) {
@@ -535,7 +621,7 @@ public:
                 ctx.regular_stream() << gparams::get_value(opt) << std::endl;
             }
             catch (gparams::exception ex) {
-                ctx.print_unsupported(opt);
+                ctx.print_unsupported(opt, m_line, m_pos);
             }
         }
     }
@@ -552,6 +638,7 @@ class get_info_cmd : public cmd {
     symbol   m_status;
     symbol   m_reason_unknown;
     symbol   m_all_statistics;
+    symbol   m_assertion_stack_levels;
 public:
     get_info_cmd():
         cmd("get-info"),
@@ -561,13 +648,14 @@ public:
         m_version(":version"),
         m_status(":status"),
         m_reason_unknown(":reason-unknown"),
-        m_all_statistics(":all-statistics") {
+        m_all_statistics(":all-statistics"),
+        m_assertion_stack_levels(":assertion-stack-levels") {
     }
     virtual char const * get_usage() const { return "<keyword>"; }
     virtual char const * get_descr(cmd_context & ctx) const { return "get information."; }
     virtual unsigned get_arity() const { return 1; }
     virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { return CPK_KEYWORD; }
-    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) { 
+    virtual void set_next_arg(cmd_context & ctx, symbol const & opt) {
         if (opt == m_error_behavior) {
             if (ctx.exit_on_error())
                 ctx.regular_stream() << "(:error-behavior immediate-exit)" << std::endl;
@@ -578,7 +666,7 @@ public:
             ctx.regular_stream() << "(:name \"Z3\")" << std::endl;
         }
         else if (opt == m_authors) {
-            ctx.regular_stream() << "(:authors \"Leonardo de Moura and Nikolaj Bjorner\")" << std::endl;
+            ctx.regular_stream() << "(:authors \"Leonardo de Moura, Nikolaj Bjorner and Christoph Wintersteiger\")" << std::endl;
         }
         else if (opt == m_version) {
             ctx.regular_stream() << "(:version \"" << Z3_MAJOR_VERSION << "." << Z3_MINOR_VERSION << "." << Z3_BUILD_NUMBER
@@ -591,13 +679,16 @@ public:
             ctx.regular_stream() << "(:status " << ctx.get_status() << ")" << std::endl;
         }
         else if (opt == m_reason_unknown) {
-            ctx.regular_stream() << "(:reason-unknown " << ctx.reason_unknown() << ")" << std::endl;
+            ctx.regular_stream() << "(:reason-unknown \"" << escaped(ctx.reason_unknown().c_str()) << "\")" << std::endl;
         }
         else if (opt == m_all_statistics) {
             ctx.display_statistics();
         }
+        else if (opt == m_assertion_stack_levels) {
+            ctx.regular_stream() << "(:assertion-stack-levels " << ctx.num_scopes() << ")" << std::endl;
+        }
         else {
-            ctx.print_unsupported(opt);
+            ctx.print_unsupported(opt, m_line, m_pos);
         }
     }
 };
@@ -620,12 +711,12 @@ public:
     virtual char const * get_descr(cmd_context & ctx) const { return "set information."; }
     virtual unsigned get_arity() const { return 2; }
     virtual void prepare(cmd_context & ctx) { m_info = symbol::null; }
-    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
-        return m_info == symbol::null ? CPK_KEYWORD : CPK_OPTION_VALUE; 
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const {
+        return m_info == symbol::null ? CPK_KEYWORD : CPK_OPTION_VALUE;
     }
     virtual void set_next_arg(cmd_context & ctx, rational const & val) {}
     virtual void set_next_arg(cmd_context & ctx, char const * val) {}
-    virtual void set_next_arg(cmd_context & ctx, symbol const & s) { 
+    virtual void set_next_arg(cmd_context & ctx, symbol const & s) {
         if (m_info == symbol::null) {
             m_info = s;
         }
@@ -673,7 +764,7 @@ public:
     virtual char const * get_descr(cmd_context & ctx) const { return "declare a new array map operator with name <symbol> using the given function declaration.\n<func-decl-ref> ::= <symbol>\n                  | (<symbol> (<sort>*) <sort>)\n                  | ((_ <symbol> <numeral>+) (<sort>*) <sort>)\nThe last two cases are used to disumbiguate between declarations with the same name and/or select (indexed) builtin declarations.\nFor more details about the the array map operator, see 'Generalized and Efficient Array Decision Procedures' (FMCAD 2009).\nExample: (declare-map set-union (Int) (or (Bool Bool) Bool))\nDeclares a new function (declare-fun set-union ((Array Int Bool) (Array Int Bool)) (Array Int Bool)).\nThe instance of the map axiom for this new declaration is:\n(forall ((a1 (Array Int Bool)) (a2 (Array Int Bool)) (i Int)) (= (select (set-union a1 a2) i) (or (select a1 i) (select a2 i))))"; }
     virtual unsigned get_arity() const { return 3; }
     virtual void prepare(cmd_context & ctx) { m_name = symbol::null; m_domain.reset(); }
-    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const {
         if (m_name == symbol::null) return CPK_SYMBOL;
         if (m_domain.empty()) return CPK_SORT_LIST;
         return CPK_FUNC_DECL;
@@ -684,10 +775,10 @@ public:
             throw cmd_exception("invalid map declaration, empty sort list");
         m_domain.append(num, slist);
     }
-    virtual void set_next_arg(cmd_context & ctx, func_decl * f) { 
-        m_f = f; 
-        if (m_f->get_arity() == 0) 
-            throw cmd_exception("invalid map declaration, function declaration must have arity > 0"); 
+    virtual void set_next_arg(cmd_context & ctx, func_decl * f) {
+        m_f = f;
+        if (m_f->get_arity() == 0)
+            throw cmd_exception("invalid map declaration, function declaration must have arity > 0");
     }
     virtual void reset(cmd_context & ctx) {
         m_array_fid = null_family_id;
@@ -716,6 +807,42 @@ public:
     }
 };
 
+class get_consequences_cmd : public cmd {
+    ptr_vector<expr> m_assumptions;
+    ptr_vector<expr> m_variables;
+    unsigned         m_count;
+public:
+    get_consequences_cmd(): cmd("get-consequences"), m_count(0) {}
+    virtual char const * get_usage() const { return "(<boolean-variable>*) (<variable>*)"; }
+    virtual char const * get_descr(cmd_context & ctx) const { return "retrieve consequences that fix values for supplied variables"; }
+    virtual unsigned get_arity() const { return 2; }
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { return CPK_EXPR_LIST; }
+    virtual void set_next_arg(cmd_context & ctx, unsigned num, expr * const * tlist) {
+        if (m_count == 0) {
+            m_assumptions.append(num, tlist);
+            ++m_count;
+        }
+        else {
+            m_variables.append(num, tlist);
+        }
+    }
+    virtual void failure_cleanup(cmd_context & ctx) {}
+    virtual void execute(cmd_context & ctx) {
+        ast_manager& m = ctx.m();
+        expr_ref_vector assumptions(m), variables(m), consequences(m);
+        assumptions.append(m_assumptions.size(), m_assumptions.c_ptr());
+        variables.append(m_variables.size(), m_variables.c_ptr());
+        ctx.get_consequences(assumptions, variables, consequences);
+        ctx.regular_stream() << consequences << "\n";
+    }
+    virtual void prepare(cmd_context & ctx) { reset(ctx); }
+
+    virtual void reset(cmd_context& ctx) {
+        m_assumptions.reset(); m_variables.reset(); m_count = 0;
+    }
+    virtual void finalize(cmd_context & ctx) {}
+};
+
 // provides "help" for builtin cmds
 class builtin_cmd : public cmd {
     char const * m_usage;
@@ -734,11 +861,13 @@ void install_basic_cmds(cmd_context & ctx) {
     ctx.insert(alloc(get_assignment_cmd));
     ctx.insert(alloc(get_assertions_cmd));
     ctx.insert(alloc(get_proof_cmd));
+    ctx.insert(alloc(get_proof_graph_cmd));
     ctx.insert(alloc(get_unsat_core_cmd));
     ctx.insert(alloc(set_option_cmd));
     ctx.insert(alloc(get_option_cmd));
     ctx.insert(alloc(get_info_cmd));
     ctx.insert(alloc(set_info_cmd));
+    ctx.insert(alloc(get_consequences_cmd));
     ctx.insert(alloc(builtin_cmd, "assert", "<term>", "assert term."));
     ctx.insert(alloc(builtin_cmd, "check-sat", "<boolean-constants>*", "check if the current context is satisfiable. If a list of boolean constants B is provided, then check if the current context is consistent with assigning every constant in B to true."));
     ctx.insert(alloc(builtin_cmd, "push", "<number>?", "push 1 (or <number>) scopes."));
@@ -749,7 +878,12 @@ void install_basic_cmds(cmd_context & ctx) {
     ctx.insert(alloc(builtin_cmd, "declare-fun", "<symbol> (<sort>*) <sort>", "declare a new function/constant."));
     ctx.insert(alloc(builtin_cmd, "declare-const", "<symbol> <sort>", "declare a new constant."));
     ctx.insert(alloc(builtin_cmd, "declare-datatypes", "(<symbol>*) (<datatype-declaration>+)", "declare mutually recursive datatypes.\n<datatype-declaration> ::= (<symbol> <constructor-decl>+)\n<constructor-decl> ::= (<symbol> <accessor-decl>*)\n<accessor-decl> ::= (<symbol> <sort>)\nexample: (declare-datatypes (T) ((BinTree (leaf (value T)) (node (left BinTree) (right BinTree)))))"));
+    ctx.insert(alloc(builtin_cmd, "check-sat-assuming", "( hprop_literali* )", "check sat assuming a collection of literals"));
+
+    ctx.insert(alloc(get_unsat_assumptions_cmd));
+    ctx.insert(alloc(reset_assertions_cmd));
 }
+
 
 void install_ext_basic_cmds(cmd_context & ctx) {
     ctx.insert(alloc(help_cmd));

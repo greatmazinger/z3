@@ -17,11 +17,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _SCOPED_PTR_VECTOR_H_
-#define _SCOPED_PTR_VECTOR_H_
+#ifndef SCOPED_PTR_VECTOR_H_
+#define SCOPED_PTR_VECTOR_H_
 
-#include"vector.h"
-#include"util.h"
+#include "util/vector.h"
+#include "util/util.h"
 
 template<typename T>
 class scoped_ptr_vector {
@@ -30,6 +30,7 @@ public:
     ~scoped_ptr_vector() { reset(); }
     void reset() { std::for_each(m_vector.begin(), m_vector.end(), delete_proc<T>()); m_vector.reset(); }
     void push_back(T * ptr) { m_vector.push_back(ptr); }
+    void pop_back() { SASSERT(!empty()); set(size()-1, 0); m_vector.pop_back(); }
     T * operator[](unsigned idx) const { return m_vector[idx]; }
     void set(unsigned idx, T * ptr) { 
         if (m_vector[idx] == ptr) 
@@ -41,7 +42,7 @@ public:
     bool empty() const { return m_vector.empty(); }
     void resize(unsigned sz) { 
         if (sz < m_vector.size()) {
-            for (unsigned i = m_vector.size(); i < sz; i++)
+            for (unsigned i = m_vector.size(); i-- > sz; )
                 dealloc(m_vector[i]);
             m_vector.shrink(sz); 
         }

@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _USES_THEORY_H_
-#define _USES_THEORY_H_
+#ifndef USES_THEORY_H_
+#define USES_THEORY_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 /**
    \brief Return true if the given expression contains a symbol of the given theory.
@@ -33,5 +33,5 @@ bool uses_theory(expr * n, family_id fid);
 */
 bool uses_theory(expr * n, family_id fid, expr_mark & visited);
 
-#endif /* _USES_THEORY_H_ */
+#endif /* USES_THEORY_H_ */
 

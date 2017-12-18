@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _UTIL_H_
-#define _UTIL_H_
+#ifndef UTIL_H_
+#define UTIL_H_
 
-#include"debug.h"
-#include"memory_manager.h"
+#include "util/debug.h"
+#include "util/memory_manager.h"
 #include<iostream>
 #include<climits>
 #include<limits>
@@ -33,13 +33,13 @@ Revision History:
 typedef unsigned long long uint64;
 #endif
 
-COMPILE_TIME_ASSERT(sizeof(uint64) == 8);
+static_assert(sizeof(uint64) == 8, "64 bits please");
 
 #ifndef int64
 typedef long long int64;
 #endif
 
-COMPILE_TIME_ASSERT(sizeof(int64) == 8);
+static_assert(sizeof(int64) == 8, "64 bits");
 
 #ifndef INT64_MIN
 #define INT64_MIN static_cast<int64>(0x8000000000000000ull)
@@ -54,11 +54,13 @@ COMPILE_TIME_ASSERT(sizeof(int64) == 8);
 #ifdef _WINDOWS
 #define SSCANF sscanf_s
 #define SPRINTF sprintf_s
+#define _Exit exit
 #else
 #define SSCANF sscanf
 #define SPRINTF sprintf
 #endif
 
+#define VEC2PTR(_x_) ((_x_).size() ? &(_x_)[0] : 0)
 
 #ifdef _WINDOWS
 // Disable thread local declspec as it seems to not work downlevel.
@@ -66,6 +68,24 @@ COMPILE_TIME_ASSERT(sizeof(int64) == 8);
 #define THREAD_LOCAL 
 #else
 #define THREAD_LOCAL 
+#endif
+
+#ifdef _MSC_VER
+# define STD_CALL __cdecl
+#else
+# define STD_CALL
+#endif
+
+#ifdef __fallthrough
+# define Z3_fallthrough __fallthrough
+#elif defined(__has_cpp_attribute)
+# if __has_cpp_attribute(clang::fallthrough)
+#  define Z3_fallthrough [[clang::fallthrough]]
+# else
+#  define Z3_fallthrough
+# endif
+#else
+# define Z3_fallthrough
 #endif
 
 inline bool is_power_of_two(unsigned v) { return !(v & (v - 1)) && v; }
@@ -92,7 +112,7 @@ inline unsigned next_power_of_two(unsigned v) {
 unsigned log2(unsigned v);
 unsigned uint64_log2(uint64 v);
 
-COMPILE_TIME_ASSERT(sizeof(unsigned) == 4);
+static_assert(sizeof(unsigned) == 4, "unsigned are 32 bits");
 
 // Return the number of 1 bits in v.
 static inline unsigned get_num_1bits(unsigned v) {
@@ -134,13 +154,13 @@ template<class T, size_t N> char (*ArraySizer(T (&)[N]))[N];
 template<typename IT>
 void display(std::ostream & out, const IT & begin, const IT & end, const char * sep, bool & first) {
     for(IT it = begin; it != end; ++it) {
-	if (first) {
-	    first = false;
-	}
-	else {
-	    out << sep;
-	}
-	out << *it;
+    if (first) {
+        first = false;
+    }
+    else {
+        out << sep;
+    }
+    out << *it;
     }
 }
 
@@ -153,9 +173,9 @@ void display(std::ostream & out, const IT & begin, const IT & end, const char * 
 template<typename T>
 struct delete_proc {
     void operator()(T * ptr) { 
-	if (ptr) {
-	    dealloc(ptr);
-	}
+    if (ptr) {
+        dealloc(ptr);
+    }
     }
 };
 
@@ -207,9 +227,7 @@ public:
     }
 
     ~scoped_ptr() {
-        if (m_ptr) {
-            dealloc(m_ptr);
-        }
+        dealloc(m_ptr);
     }
 
     T * operator->() const { 
@@ -234,9 +252,7 @@ public:
 
     scoped_ptr & operator=(T * n) {
         if (m_ptr != n) {
-            if (m_ptr) {
-                dealloc(m_ptr);
-            }
+            dealloc(m_ptr);
             m_ptr = n;
         }
         return *this;
@@ -273,22 +289,6 @@ bool has_duplicates(const IT & begin, const IT & end) {
     return false;
 }
 
-#ifndef __out
-#define __out
-#endif
-
-#ifndef __in
-#define __in
-#endif
-
-#ifndef __inout
-#define __inout
-#endif
-
-#ifndef __fallthrough
-#define __fallthrough
-#endif
-
 #ifndef _WINDOWS
 #ifndef __declspec
 #define __declspec(X)
@@ -323,7 +323,7 @@ bool compare_arrays(const T * array1, const T * array2, unsigned size) {
 template<typename T>
 void force_ptr_array_size(T & v, unsigned sz) {
     if (sz > v.size()) {
-        v.resize(sz, 0);
+        v.resize(sz);
     }
 }
 
@@ -404,7 +404,6 @@ inline size_t megabytes_to_bytes(unsigned mb) {
     return r;
 }
 
-void z3_bound_num_procs();
 
-#endif /* _UTIL_H_ */
+#endif /* UTIL_H_ */
 

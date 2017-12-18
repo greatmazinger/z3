@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_VAR_QUEUE_H_
-#define _SAT_VAR_QUEUE_H_
+#ifndef SAT_VAR_QUEUE_H_
+#define SAT_VAR_QUEUE_H_
 
-#include"heap.h"
-#include"sat_types.h"
+#include "util/heap.h"
+#include "sat/sat_types.h"
 
 namespace sat {
     

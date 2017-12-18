@@ -1,17 +1,16 @@
-#include "ast.h"
-#include "smt_params.h"
-#include "simplifier.h"
-#include "qe.h"
-#include "basic_simplifier_plugin.h"
-#include "arith_simplifier_plugin.h"
-#include "array_simplifier_plugin.h"
-#include "bv_simplifier_plugin.h"
-#include "ast_pp.h"
-#include "smtlib.h"
-#include "smtparser.h"
-#include "lbool.h"
+
+/*++
+Copyright (c) 2015 Microsoft Corporation
+
+--*/
+
+#include "ast/ast.h"
+#include "smt/params/smt_params.h"
+#include "qe/qe.h"
+#include "ast/ast_pp.h"
+#include "util/lbool.h"
 #include <sstream>
-#include "reg_decl_plugins.h"
+#include "ast/reg_decl_plugins.h"
 
 
 static void test_qe(ast_manager& m, lbool expected_outcome, expr* fml, char const* option) {
@@ -32,7 +31,6 @@ static void test_qe(ast_manager& m, lbool expected_outcome, expr* fml, char cons
     // enable_trace("after_search");
     // enable_trace("bv_bit_prop");
 
-    simplifier simp(m);
     smt_params params;
     // params.m_quant_elim = true;
 
@@ -54,6 +52,9 @@ static void test_qe(ast_manager& m, lbool expected_outcome, expr* fml, char cons
 static void test_formula(lbool expected_outcome, char const* fml) {
     ast_manager m;
     reg_decl_plugins(m);
+    // No-op requires SMTLIB2
+
+#if 0
     scoped_ptr<smtlib::parser> parser = smtlib::parser::create(m);
     parser->initialize_smtlib();
 
@@ -73,7 +74,9 @@ static void test_formula(lbool expected_outcome, char const* fml) {
     for (; it != end; ++it) {
         test_qe(m, expected_outcome, *it, 0);
     }
+#endif
 }
+
 
 void tst_quant_elim() {
     disable_debug("heap");

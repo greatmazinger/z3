@@ -34,14 +34,14 @@ Notes:
 
 --*/
 
-#ifndef _HEAP_TRIE_H_
-#define _HEAP_TRIE_H_
+#ifndef HEAP_TRIE_H_
+#define HEAP_TRIE_H_
 
-#include "map.h"
-#include "vector.h"
-#include "buffer.h"
-#include "statistics.h"
-#include "small_object_allocator.h"
+#include "util/map.h"
+#include "util/vector.h"
+#include "util/buffer.h"
+#include "util/statistics.h"
+#include "util/small_object_allocator.h"
 
 
 template<typename Key, typename KeyLE, typename KeyHash, typename Value>
@@ -283,7 +283,7 @@ public:
         ++m_stats.m_num_removes;
         // assumption: key is in table.
         node* n = m_root;
-        node* m;
+        node* m = 0;
         for (unsigned i = 0; i < num_keys(); ++i) {
             n->dec_ref();
             VERIFY (to_trie(n)->find(get_key(keys, i), m));

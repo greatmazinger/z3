@@ -19,8 +19,8 @@ Revision History:
 
 #include<utility>
 #include<sstream>
-#include"ast_pp.h"
-#include"dl_mk_magic_sets.h"
+#include "ast/ast_pp.h"
+#include "muz/transforms/dl_mk_magic_sets.h"
 
 namespace datalog {
 
@@ -264,7 +264,7 @@ namespace datalog {
         }
 
 
-        func_decl * new_head_pred;
+        func_decl * new_head_pred = 0;
         VERIFY( m_adorned_preds.find(adornment_desc(head->get_decl(), head_adornment), new_head_pred) );
         app * new_head = m.mk_app(new_head_pred, head->get_args());
 
@@ -280,7 +280,7 @@ namespace datalog {
         new_tail.push_back(create_magic_literal(new_head));
         negations.push_back(false);
 
-        rule * nr = m_context.get_rule_manager().mk(new_head, new_tail.size(), new_tail.c_ptr(), negations.c_ptr());
+        rule * nr = m_context.get_rule_manager().mk(new_head, new_tail.size(), new_tail.c_ptr(), negations.c_ptr(), r->name());
         result.add_rule(nr);
         nr->set_accounting_parent_object(m_context, r);
     }

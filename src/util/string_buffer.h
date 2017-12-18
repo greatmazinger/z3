@@ -16,14 +16,14 @@
   Revision History:
 
   --*/
-#ifndef _STRING_BUFFER_H_
-#define _STRING_BUFFER_H_
+#ifndef STRING_BUFFER_H_
+#define STRING_BUFFER_H_
 
 #include<cstdio>
 #include<string>
 #include<string.h>
-#include"util.h"
-#include"memory_manager.h"
+#include "util/util.h"
+#include "util/memory_manager.h"
 
 // This string buffer will not use the heap if the data consumes less than INITIAL_SIZE bytes. 
 template<unsigned INITIAL_SIZE=64>

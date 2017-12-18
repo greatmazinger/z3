@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _GPARAMS_H_
-#define _GPARAMS_H_
+#ifndef GPARAMS_H_
+#define GPARAMS_H_
 
-#include"params.h"
+#include "util/params.h"
 
 class gparams {
     struct imp;

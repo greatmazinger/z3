@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _EXPR_ABSTRACT_H_
-#define _EXPR_ABSTRACT_H_
+#ifndef EXPR_ABSTRACT_H_
+#define EXPR_ABSTRACT_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 class expr_abstractor {
     ast_manager& m;
@@ -33,6 +33,8 @@ public:
 };
 
 void expr_abstract(ast_manager& m, unsigned base, unsigned num_bound, expr* const* bound, expr* n, expr_ref&  result);
+expr_ref mk_forall(ast_manager& m, unsigned num_bound, app* const* bound, expr* n);
+expr_ref mk_exists(ast_manager& m, unsigned num_bound, app* const* bound, expr* n);
 
 #endif
 

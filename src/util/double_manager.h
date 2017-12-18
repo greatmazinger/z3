@@ -16,17 +16,17 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DOUBLE_MANAGER_H_
-#define _DOUBLE_MANAGER_H_
+#ifndef DOUBLE_MANAGER_H_
+#define DOUBLE_MANAGER_H_
 
 #include<cmath>
 #include<string>
 #include<sstream>
 #include<iomanip>
-#include"util.h"
-#include"debug.h"
-#include"hash.h"
-#include"params.h"
+#include "util/util.h"
+#include "util/debug.h"
+#include "util/hash.h"
+#include "util/params.h"
 
 /**
    \brief Create an interface for manipulating double numbers compatible with the one for mpq.
@@ -97,7 +97,7 @@ public:
     }
 };
 
-COMPILE_TIME_ASSERT(sizeof(uint64) == sizeof(double));
+static_assert(sizeof(uint64) == sizeof(double), "");
 
-#endif /* _DOUBLE_MANAGER_H_ */
+#endif /* DOUBLE_MANAGER_H_ */
 

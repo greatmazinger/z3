@@ -17,10 +17,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_CONFIG_H_
-#define _SAT_CONFIG_H_
+#ifndef SAT_CONFIG_H_
+#define SAT_CONFIG_H_
 
-#include"params.h"
+#include "util/params.h"
 
 namespace sat {
 
@@ -52,10 +52,12 @@ namespace sat {
         restart_strategy   m_restart;
         unsigned           m_restart_initial;
         double             m_restart_factor; // for geometric case
+        unsigned           m_restart_max;
         double             m_random_freq;
         unsigned           m_random_seed;
         unsigned           m_burst_search;
         unsigned           m_max_conflicts;
+        unsigned           m_num_parallel;
 
         unsigned           m_simplify_mult1;
         double             m_simplify_mult2;
@@ -69,6 +71,10 @@ namespace sat {
 
         bool               m_minimize_lemmas;
         bool               m_dyn_sub_res;
+        bool               m_core_minimize;
+        bool               m_core_minimize_partial;
+
+        bool               m_dimacs_display;
 
         symbol             m_always_true;
         symbol             m_always_false;

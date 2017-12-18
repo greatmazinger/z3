@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_ELIM_EQS_H_
-#define _SAT_ELIM_EQS_H_
+#ifndef SAT_ELIM_EQS_H_
+#define SAT_ELIM_EQS_H_
 
-#include"sat_types.h"
+#include "sat/sat_types.h"
 
 namespace sat {
     class solver;

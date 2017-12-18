@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_MK_LOOP_COUNTER_H_
-#define _DL_MK_LOOP_COUNTER_H_
+#ifndef DL_MK_LOOP_COUNTER_H_
+#define DL_MK_LOOP_COUNTER_H_
 
-#include"dl_rule_transformer.h"
-#include"arith_decl_plugin.h"
+#include "muz/base/dl_rule_transformer.h"
+#include "ast/arith_decl_plugin.h"
 
 namespace datalog {
 
@@ -47,5 +47,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_MK_LOOP_COUNTER_H_ */
+#endif /* DL_MK_LOOP_COUNTER_H_ */
 

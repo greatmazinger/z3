@@ -16,19 +16,19 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_BASE_H_
-#define _DL_BASE_H_
+#ifndef DL_BASE_H_
+#define DL_BASE_H_
 
 #define DL_LEAK_HUNTING 0
 
 #include<iosfwd>
 
-#include"ast.h"
-#include"map.h"
-#include"vector.h"
-#include"ref.h"
-#include"dl_util.h"
-#include"dl_context.h"
+#include "ast/ast.h"
+#include "util/map.h"
+#include "util/vector.h"
+#include "util/ref.h"
+#include "muz/base/dl_util.h"
+#include "muz/base/dl_context.h"
 
 namespace datalog {
 
@@ -88,7 +88,7 @@ namespace datalog {
         typedef typename Traits::signature signature; //this must be a vector-like type
 
         /**
-           The client submits an initial class to be used as a base for signature. Then we excend it by
+           The client submits an initial class to be used as a base for signature. Then we extend it by
            the common signature methods into a signature_base class which then the client inherits from
            to obtain the actual signature class.
         */
@@ -220,6 +220,8 @@ namespace datalog {
         */
         class mutator_fn : public base_fn {
         public:
+            virtual ~mutator_fn() {}
+
             virtual void operator()(base_object & t) = 0;
 
             virtual bool supports_attachment(base_object& other) { return false; }
@@ -248,6 +250,7 @@ namespace datalog {
         class plugin_object {
             friend class relation_manager;
             friend class check_table_plugin;
+            friend class check_relation_plugin;
 
             family_id m_kind;
             symbol    m_name;
@@ -268,8 +271,6 @@ namespace datalog {
             family_id get_kind() const { return m_kind; }
 
             symbol const& get_name() const { return m_name; }
-
-            virtual void set_cancel(bool f) {}
 
             relation_manager & get_manager() const { return m_manager; }
             ast_manager& get_ast_manager() const { return datalog::get_ast_manager_from_rel_manager(m_manager); }
@@ -436,11 +437,7 @@ namespace datalog {
             void destroy() {
                 SASSERT(this);
                 this->~base_ancestor();
-#if _DEBUG
-                memory::deallocate(__FILE__, __LINE__, this);
-#else
                 memory::deallocate(this);
-#endif
             }
         public:
             /**
@@ -465,6 +462,14 @@ namespace datalog {
             relation_manager & get_manager() const { return get_plugin().get_manager(); }
 
             virtual bool empty() const = 0;
+            /**
+               \brief fast emptiness check. This may be partial.
+               The requirement is that if fast_empty returns true 
+               then the table or relation is in fact empty.
+               It is allowed to return false even if the relation is empty.
+            */
+            virtual bool fast_empty() const { return empty(); }
+
             virtual void add_fact(const fact & f) = 0;
             /**
                \brief Like \c add_fact, only here the caller guarantees that the fact is not present in
@@ -497,6 +502,7 @@ namespace datalog {
             virtual unsigned get_size_estimate_rows() const { return UINT_MAX; }
             virtual unsigned get_size_estimate_bytes() const { return UINT_MAX; }
             virtual bool knows_exact_size() const { return false; }
+            unsigned num_columns() const { return get_signature().size(); }
 
             virtual void display(std::ostream & out) const = 0;
         };
@@ -865,6 +871,7 @@ namespace datalog {
 
     class table_row_mutator_fn {
     public:
+        virtual ~table_row_mutator_fn() {}
         /**
             \brief The function is called for a particular table row. The \c func_columns contains 
             a pointer to an array of functional column values that can be modified. If the function 
@@ -878,6 +885,7 @@ namespace datalog {
 
     class table_row_pair_reduce_fn {
     public:
+        virtual ~table_row_pair_reduce_fn() {}
         /**
             \brief The function is called for pair of table rows that became duplicit due to projection.
             The values that are in the first array after return from the function will be used for the 
@@ -1271,5 +1279,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_BASE_H_ */
+#endif /* DL_BASE_H_ */
 

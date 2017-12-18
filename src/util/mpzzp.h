@@ -23,10 +23,10 @@ Revision History:
     In the future, it will replace it.
 
 --*/
-#ifndef _MPZZP_H_
-#define _MPZZP_H_
+#ifndef MPZZP_H_
+#define MPZZP_H_
 
-#include "mpz.h"
+#include "util/mpz.h"
 
 class mpzzp_manager {
     typedef unsynch_mpz_manager numeral_manager;

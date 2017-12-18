@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _LBOOL_H_
-#define _LBOOL_H_
+#ifndef LBOOL_H_
+#define LBOOL_H_
 
-#include"util.h"
+#include "util/util.h"
 
 typedef enum { l_false = -1, l_undef, l_true } lbool;
 
@@ -38,5 +38,5 @@ std::ostream & operator<<(std::ostream & out, lbool b);
 */
 char const * to_sat_str(lbool l);
 
-#endif /* _LBOOL_H_ */
+#endif /* LBOOL_H_ */
 

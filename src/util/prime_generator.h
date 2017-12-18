@@ -16,12 +16,12 @@ Author:
 Notes:
 
 --*/
-#ifndef _PRIME_GENERATOR_H_
-#define _PRIME_GENERATOR_H_
+#ifndef PRIME_GENERATOR_H_
+#define PRIME_GENERATOR_H_
 
-#include"vector.h"
-#include"z3_exception.h"
-#include"util.h"
+#include "util/vector.h"
+#include "util/z3_exception.h"
+#include "util/util.h"
 
 class prime_generator_exception : public default_exception {
 public:

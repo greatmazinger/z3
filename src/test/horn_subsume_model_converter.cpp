@@ -1,8 +1,14 @@
 
-#include "horn_subsume_model_converter.h"
-#include "arith_decl_plugin.h"
-#include "model_smt2_pp.h"
-#include "reg_decl_plugins.h"
+/*++
+Copyright (c) 2015 Microsoft Corporation
+
+--*/
+
+
+#include "tactic/horn_subsume_model_converter.h"
+#include "ast/arith_decl_plugin.h"
+#include "model/model_smt2_pp.h"
+#include "ast/reg_decl_plugins.h"
 
 void tst_horn_subsume_model_converter() {
     ast_manager m;

@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_RELEVANCY_H_
-#define _SMT_RELEVANCY_H_
+#ifndef SMT_RELEVANCY_H_
+#define SMT_RELEVANCY_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 namespace smt {
     class context;
@@ -200,5 +200,5 @@ namespace smt {
 
 };
 
-#endif /* _SMT_RELEVANCY_H_ */
+#endif /* SMT_RELEVANCY_H_ */
 

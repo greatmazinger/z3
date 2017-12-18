@@ -16,9 +16,9 @@ Author:
 Notes:
 
 --*/
-#include"name_exprs.h"
-#include"rewriter_def.h"
-#include"ast_smt2_pp.h"
+#include "ast/normal_forms/name_exprs.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/ast_smt2_pp.h"
 
 class name_exprs_core : public name_exprs {
     struct cfg : public default_rewriter_cfg {
@@ -87,9 +87,6 @@ public:
         TRACE("name_exprs", tout << mk_ismt2_pp(n, m_rw.m()) << "\n---->\n" << mk_ismt2_pp(r, m_rw.m()) << "\n";);
     }
     
-    virtual void set_cancel(bool f) {
-        m_rw.set_cancel(f);
-    }
 
     virtual void reset() {
         m_rw.reset();

@@ -16,9 +16,9 @@ Author:
 Revision History:
 
 --*/
-#include"func_decl_dependencies.h"
-#include"for_each_expr.h"
-#include"ast_util.h"
+#include "ast/func_decl_dependencies.h"
+#include "ast/for_each_expr.h"
+#include "ast/ast_util.h"
 
 struct collect_dependencies_proc {
     ast_manager &     m_manager;
@@ -145,24 +145,24 @@ class func_decl_dependencies::top_sort {
             return false;
         m_todo.push_back(f);
         while (!m_todo.empty()) {
-            func_decl * f = m_todo.back();
+            func_decl * cf = m_todo.back();
             
-            switch (get_color(f)) {
+            switch (get_color(cf)) {
             case CLOSED:                
                 m_todo.pop_back();
                 break;
             case OPEN:
-                set_color(f, IN_PROGRESS);
-                if (visit_children(f)) {
-                    SASSERT(m_todo.back() == f);
+                set_color(cf, IN_PROGRESS);
+                if (visit_children(cf)) {
+                    SASSERT(m_todo.back() == cf);
                     m_todo.pop_back();
-                    set_color(f, CLOSED);
+                    set_color(cf, CLOSED);
                 }
                 break;
             case IN_PROGRESS: 
-                if (all_children_closed(f)) {
-                    SASSERT(m_todo.back() == f);
-                    set_color(f, CLOSED);
+                if (all_children_closed(cf)) {
+                    SASSERT(m_todo.back() == cf);
+                    set_color(cf, CLOSED);
                 } else {
                     m_todo.reset();
                     return true;

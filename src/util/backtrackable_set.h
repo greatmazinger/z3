@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _BACKTRACKABLE_SET_H_
-#define _BACKTRACKABLE_SET_H_
+#ifndef BACKTRACKABLE_SET_H_
+#define BACKTRACKABLE_SET_H_
 
-#include"vector.h"
+#include "util/vector.h"
 
 template<typename T>
 struct default_eh {

@@ -16,23 +16,29 @@ Author:
 Revision History:
 
 --*/
-#ifndef _CANCEL_EH_H_
-#define _CANCEL_EH_H_
+#ifndef CANCEL_EH_H_
+#define CANCEL_EH_H_
 
-#include"event_handler.h"
+#include "util/event_handler.h"
 
 /**
    \brief Generic event handler for invoking cancel method.
 */
 template<typename T>
 class cancel_eh : public event_handler {
+    bool m_canceled;
     T & m_obj;
 public:
-    cancel_eh(T & o):m_obj(o) {}
-    ~cancel_eh() { m_obj.reset_cancel(); }
-    virtual void operator()() { 
-        m_obj.cancel(); 
+    cancel_eh(T & o): m_canceled(false), m_obj(o) {}
+    ~cancel_eh() { if (m_canceled) m_obj.dec_cancel(); }
+    virtual void operator()(event_handler_caller_t caller_id) {
+        if (!m_canceled) {
+            m_caller_id = caller_id;
+            m_canceled = true;
+            m_obj.inc_cancel(); 
+        }
     }
+    bool canceled() const { return m_canceled; }
 };
 
 #endif

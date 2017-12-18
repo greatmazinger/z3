@@ -17,11 +17,11 @@ Revision History:
 
 --*/
 
-#include "debug.h"
-#include "ast_pp.h"
-#include "dl_context.h"
-#include "dl_external_relation.h"
-#include "dl_decl_plugin.h"
+#include "util/debug.h"
+#include "ast/ast_pp.h"
+#include "muz/base/dl_context.h"
+#include "muz/rel/dl_external_relation.h"
+#include "ast/dl_decl_plugin.h"
 
 namespace datalog {
        
@@ -338,9 +338,8 @@ namespace datalog {
             : m_plugin(p),
               m_condition(condition, p.get_ast_manager()),
               m_filter_fn(p.get_ast_manager()) {
-            ast_manager& m = p.get_ast_manager();
             p.mk_filter_fn(relation_sort, condition, m_filter_fn);
-            SASSERT(m.is_bool(condition));
+            SASSERT(p.get_ast_manager().is_bool(condition));
         }
 
         virtual void operator()(relation_base & r) {

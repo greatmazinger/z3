@@ -30,14 +30,14 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"th_rewriter.h"
-#include"extension_model_converter.h"
-#include"filter_model_converter.h"
-#include"arith_decl_plugin.h"
-#include"expr_substitution.h"
-#include"dec_ref_util.h"
-#include"ast_smt2_pp.h"
+#include "tactic/tactical.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "tactic/extension_model_converter.h"
+#include "tactic/filter_model_converter.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/expr_substitution.h"
+#include "util/dec_ref_util.h"
+#include "ast/ast_smt2_pp.h"
 
 class recover_01_tactic : public tactic {
     struct imp {
@@ -66,9 +66,6 @@ class recover_01_tactic : public tactic {
             updt_params_core(p);
         }
         
-        void set_cancel(bool f) {
-            m_rw.set_cancel(f);
-        }
 
         bool save_clause(expr * c) {
             if (!m.is_or(c))
@@ -426,17 +423,8 @@ public:
     
     virtual void cleanup() {
         imp * d = alloc(imp, m_imp->m, m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);        
         dealloc(d);
-    }
-
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
     }
 };
 

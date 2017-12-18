@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _ADD_BOUNDS_H_
-#define _ADD_BOUNDS_H_
+#ifndef ADD_BOUNDS_H_
+#define ADD_BOUNDS_H_
 
-#include"params.h"
+#include "util/params.h"
 
 class ast_manager;
 class goal;

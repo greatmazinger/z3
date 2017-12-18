@@ -16,11 +16,11 @@ Author:
 Notes:
 
 --*/
-#include"model.h"
-#include"model_pp.h"
-#include"model_converter.h"
-#include"bv_decl_plugin.h"
-#include"ast_smt2_pp.h"
+#include "model/model.h"
+#include "model/model_pp.h"
+#include "tactic/model_converter.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/ast_smt2_pp.h"
 
 /**
    If TO_BOOL == true, then bit-vectors of size n were blasted into n-tuples of Booleans.
@@ -98,6 +98,11 @@ struct bit_blaster_model_converter : public model_converter {
         SASSERT(m_vars.size() == m_bits.size());
         unsigned sz = m_vars.size();
         for (unsigned i = 0; i < sz; i++) {
+            expr* new_val = old_model->get_const_interp(m_vars.get(i));
+            if (new_val) {
+                new_model->register_decl(m_vars.get(i), new_val);
+                continue;
+            }
             expr * bs = m_bits.get(i);
             val.reset();
             unsigned bv_sz = to_app(bs)->get_num_args();
@@ -132,7 +137,7 @@ struct bit_blaster_model_converter : public model_converter {
                         val++;
                 }
             }
-            expr * new_val = util.mk_numeral(val, bv_sz);
+            new_val = util.mk_numeral(val, bv_sz);
             new_model->register_decl(m_vars.get(i), new_val);
         }
     }

@@ -18,24 +18,22 @@ Revision History:
 
 --*/
 
-#include "ast_smt2_pp.h"
-#include "array_decl_plugin.h"
-#include "bool_rewriter.h"
-#include "dl_decl_plugin.h"
-#include "for_each_expr.h"
-#include "dl_util.h"
-#include "rewriter.h"
-#include "rewriter_def.h"
-#include "pdr_util.h"
-#include "pdr_farkas_learner.h"
-#include "th_rewriter.h"
-#include "ast_ll_pp.h"
-#include "arith_bounds_tactic.h"
-#include "proof_utils.h"
-#include "reg_decl_plugins.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/array_decl_plugin.h"
+#include "ast/rewriter/bool_rewriter.h"
+#include "ast/dl_decl_plugin.h"
+#include "ast/for_each_expr.h"
+#include "muz/base/dl_util.h"
+#include "ast/rewriter/rewriter.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "muz/pdr/pdr_util.h"
+#include "muz/pdr/pdr_farkas_learner.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "ast/ast_ll_pp.h"
+#include "tactic/arith/arith_bounds_tactic.h"
+#include "ast/proofs/proof_utils.h"
+#include "ast/reg_decl_plugins.h"
 
-#define PROOF_MODE PGM_FINE
-//#define PROOF_MODE PGM_COARSE
 
 namespace pdr {
 
@@ -203,7 +201,7 @@ namespace pdr {
                 lits.push_back(extract_consequence(lo, hi));
                 lo = hi;
             }
-            res = qe::mk_or(lits);
+            res = mk_or(lits);
             IF_VERBOSE(2, { if (lits.size() > 1) { verbose_stream() << "combined lemma: " << mk_pp(res, m) << "\n"; } });
 #endif
         }
@@ -374,7 +372,7 @@ namespace pdr {
     
     farkas_learner::farkas_learner(smt_params& params, ast_manager& outer_mgr) 
         : m_proof_params(get_proof_params(params)), 
-          m_pr(PROOF_MODE),
+          m_pr(PGM_ENABLED),
           m_constr(0),
           m_combine_farkas_coefficients(true),
           p2o(m_pr, outer_mgr),
@@ -417,6 +415,7 @@ namespace pdr {
                 return false;
             }
         }
+
     };
 
     class collect_pure_proc {
@@ -451,7 +450,7 @@ namespace pdr {
 
         expr_set bs;
         expr_ref_vector blist(m_pr);
-        qe::flatten_and(B, blist);
+        flatten_and(B, blist);
         for (unsigned i = 0; i < blist.size(); ++i) {
             bs.insert(blist[i].get());
         }
@@ -734,8 +733,8 @@ namespace pdr {
                     }
                     else {
                         expr_set* hyps3 = alloc(expr_set);
-                        datalog::set_union(*hyps3, *hyps);
-                        datalog::set_union(*hyps3, *hyps2);
+                        set_union(*hyps3, *hyps);
+                        set_union(*hyps3, *hyps2);
                         hyps = hyps3;
                         hyprefs.push_back(hyps);
                     }
@@ -796,7 +795,7 @@ namespace pdr {
             case PR_LEMMA: {
                 expr_set* hyps2 = alloc(expr_set);
                 hyprefs.push_back(hyps2);
-                datalog::set_union(*hyps2, *hyps); 
+                set_union(*hyps2, *hyps); 
                 hyps = hyps2;
                 expr* fml = m.get_fact(p);
                 hyps->remove(fml);
@@ -924,6 +923,7 @@ namespace pdr {
             if (p->get_decl_kind() == PR_ASSERTED &&
                 bs.contains(m.get_fact(p))) {
                 expr* fact = m.get_fact(p);
+                (void)p0;
                 TRACE("farkas_learner", 
                       tout << mk_ll_pp(p0,m) << "\n";
                       tout << "Add: " << mk_pp(p,m) << "\n";);

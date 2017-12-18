@@ -17,12 +17,12 @@ Author:
 Notes:
 
 --*/
-#ifndef _ACT_CACHE_H_
-#define _ACT_CACHE_H_
+#ifndef ACT_CACHE_H_
+#define ACT_CACHE_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
-#include"chashtable.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
+#include "util/chashtable.h"
 
 class act_cache {
     ast_manager &        m_manager;

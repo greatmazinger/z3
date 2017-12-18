@@ -17,21 +17,21 @@ Revision History:
 
 --*/
 #include<sstream>
-#include"util.h"
-#include"rational.h"
+#include "util/util.h"
+#include "util/rational.h"
 #ifdef _WINDOWS
 #include<strsafe.h>
 #endif
 
 synch_mpq_manager *  rational::g_mpq_manager = 0;
-rational             rational::m_zero(0);
-rational             rational::m_one(1);
-rational             rational::m_minus_one(-1);
+rational             rational::m_zero;
+rational             rational::m_one;
+rational             rational::m_minus_one;
 vector<rational>     rational::m_powers_of_two;
 
-void mk_power_up_to(vector<rational> & pws, unsigned n) {
+static void mk_power_up_to(vector<rational> & pws, unsigned n) {
     if (pws.empty()) {
-        pws.push_back(rational(1));
+        pws.push_back(rational::one());
     }
     unsigned sz = pws.size();
     rational curr = pws[sz - 1];
@@ -53,14 +53,32 @@ rational rational::power_of_two(unsigned k) {
     return result;
 }
 
+// in inf_rational.cpp
+void initialize_inf_rational();
+void finalize_inf_rational();
+
+// in inf_int_rational.cpp
+void initialize_inf_int_rational();
+void finalize_inf_int_rational();
+
 void rational::initialize() {
     if (!g_mpq_manager) {
         g_mpq_manager = alloc(synch_mpq_manager);
+        m().set(m_zero.m_val, 0);
+        m().set(m_one.m_val, 1);
+        m().set(m_minus_one.m_val, -1);
+        initialize_inf_rational();
+        initialize_inf_int_rational();
     }
 }
 
 void rational::finalize() {
+    finalize_inf_rational();
+    finalize_inf_int_rational();
     m_powers_of_two.finalize();
+    m_zero.~rational();
+    m_one.~rational();
+    m_minus_one.~rational();
     dealloc(g_mpq_manager);
     g_mpq_manager = 0;
 }

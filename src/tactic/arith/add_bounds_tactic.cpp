@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"arith_decl_plugin.h"
-#include"ast_smt2_pp.h"
-#include"bound_manager.h"
+#include "tactic/tactical.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/ast_smt2_pp.h"
+#include "tactic/arith/bound_manager.h"
 
 struct is_unbounded_proc {
     struct found {};
@@ -51,6 +51,7 @@ public:
     virtual result operator()(goal const & g) {
         return is_unbounded(g);
     }
+    virtual ~is_unbounded_probe() {}
 };
 
 probe * mk_is_unbounded_probe() {
@@ -62,7 +63,6 @@ class add_bounds_tactic : public tactic {
         ast_manager & m;
         rational      m_lower;
         rational      m_upper;
-        volatile bool m_cancel;
         
         imp(ast_manager & _m, params_ref const & p):
             m(_m) {
@@ -74,9 +74,6 @@ class add_bounds_tactic : public tactic {
             m_upper  = p.get_rat("add_bound_upper", rational(2));
         }
         
-        void set_cancel(bool f) {
-            m_cancel = f;
-        }
         
         struct add_bound_proc {
             arith_util       m_util;
@@ -113,11 +110,11 @@ class add_bounds_tactic : public tactic {
             void operator()(quantifier*) {}
         };
         
-        virtual void operator()(goal_ref const & g, 
-                                goal_ref_buffer & result, 
-                                model_converter_ref & mc, 
-                                proof_converter_ref & pc,
-                                expr_dependency_ref & core) {
+        void operator()(goal_ref const & g, 
+                        goal_ref_buffer & result, 
+                        model_converter_ref & mc, 
+                        proof_converter_ref & pc,
+                        expr_dependency_ref & core) {
             mc = 0; pc = 0; core = 0;
             tactic_report report("add-bounds", *g);
             bound_manager bm(m);
@@ -173,18 +170,10 @@ public:
     
     virtual void cleanup() {
         imp * d = alloc(imp, m_imp->m, m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);
         dealloc(d);
     }
 
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_add_bounds_tactic(ast_manager & m, params_ref const & p) {

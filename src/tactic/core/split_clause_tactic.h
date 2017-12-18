@@ -17,10 +17,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _SPLIT_CLAUSE_TACTIC_H_
-#define _SPLIT_CLAUSE_TACTIC_H_
+#ifndef SPLIT_CLAUSE_TACTIC_H_
+#define SPLIT_CLAUSE_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class tactic;
 
 tactic * mk_split_clause_tactic(params_ref const & p = params_ref());

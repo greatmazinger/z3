@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _GOAL_SHARED_OCCS_H_
-#define _GOAL_SHARED_OCCS_H_
+#ifndef GOAL_SHARED_OCCS_H_
+#define GOAL_SHARED_OCCS_H_
 
-#include"goal.h"
-#include"shared_occs.h"
+#include "tactic/goal.h"
+#include "ast/shared_occs.h"
 
 /**
    \brief Functor for computing the set of shared occurrences in a goal.

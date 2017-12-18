@@ -18,12 +18,12 @@ Revision History:
 
 --*/
 
-#ifndef _DL_CHECK_TABLE_H_
-#define _DL_CHECK_TABLE_H_
+#ifndef DL_CHECK_TABLE_H_
+#define DL_CHECK_TABLE_H_
 
-#include "dl_base.h"
-#include "dl_decl_plugin.h"
-#include "dl_relation_manager.h"
+#include "muz/rel/dl_base.h"
+#include "ast/dl_decl_plugin.h"
+#include "muz/rel/dl_relation_manager.h"
 
 namespace datalog {
     class check_table;
@@ -132,4 +132,4 @@ namespace datalog {
 
  };
 
- #endif /* _DL_CHECK_TABLE_H_ */
+#endif /* DL_CHECK_TABLE_H_ */

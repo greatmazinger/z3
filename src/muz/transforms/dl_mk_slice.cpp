@@ -22,7 +22,7 @@ Revision History:
     input:  x, z
     output: x, y
 
-    Let x_i, y_i, z_i be incides into the vectors x, y, z.
+    Let x_i, y_i, z_i be indices into the vectors x, y, z.
 
     Suppose that positions in P and R are annotated with what is
     slicable.
@@ -50,11 +50,12 @@ Revision History:
 
 --*/
 
-#include "dl_mk_slice.h"
-#include "ast_pp.h"
-#include "expr_functors.h"
-#include "dl_mk_rule_inliner.h"
-#include "model_smt2_pp.h"
+#include "muz/transforms/dl_mk_slice.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_util.h"
+#include "ast/expr_functors.h"
+#include "muz/transforms/dl_mk_rule_inliner.h"
+#include "model/model_smt2_pp.h"
 
 namespace datalog {
 
@@ -120,7 +121,7 @@ namespace datalog {
             obj_map<rule, rule*>::iterator end = m_rule2slice.end();
             expr_ref fml(m);
             for (; it != end; ++it) {
-                it->m_value->to_formula(fml);
+                rm.to_formula(*it->m_value, fml);
                 m_pinned_exprs.push_back(fml);
                 TRACE("dl", 
                       tout << "orig: " << mk_pp(fml, m) << "\n";
@@ -238,7 +239,7 @@ namespace datalog {
                     r3->display(m_ctx, tout << "res:"););
                 r1 = r3;
             }
-            r1->to_formula(concl);
+            rm.to_formula(*r1.get(), concl);
             proof* new_p = m.mk_hyper_resolve(premises.size(), premises.c_ptr(), concl, positions, substs);
             m_pinned_exprs.push_back(new_p);
             m_pinned_rules.push_back(r1.get());
@@ -425,8 +426,8 @@ namespace datalog {
         bool change = true;
         while (change) {
             change = false;
-            for (unsigned i = 0; i < src.get_num_rules(); ++i) {
-                change = prune_rule(*src.get_rule(i)) || change;
+            for (rule* r : src) {
+                change = prune_rule(*r) || change;
             }
         }
     }
@@ -456,18 +457,19 @@ namespace datalog {
 
     void mk_slice::solve_vars(rule& r, uint_set& used_vars, uint_set& parameter_vars) {
         expr_ref_vector conjs = get_tail_conjs(r);
-        for (unsigned j = 0; j < conjs.size(); ++j) {
-            expr* e = conjs[j].get();
+        for (expr * e : conjs) {
             expr_ref r(m);
             unsigned v;
             if (is_eq(e, v, r) && is_output(v) && m_var_is_sliceable[v]) {
                 TRACE("dl", tout << "is_eq: " << mk_pp(e, m) << " " << (m_solved_vars[v].get()?"solved":"new") << "\n";);
                 add_var(v);
                 if (!m_solved_vars[v].get()) { 
+                    TRACE("dl", tout << v << " is solved\n";);
                     add_free_vars(parameter_vars, r);
                     m_solved_vars[v] = r;
                 }
                 else {
+                    TRACE("dl", tout << v << " is used\n";);
                     // variables can only be solved once.
                     add_free_vars(used_vars, e);
                     add_free_vars(used_vars, m_solved_vars[v].get());
@@ -507,10 +509,9 @@ namespace datalog {
         // 
         uint_set used_vars, parameter_vars;
         solve_vars(r, used_vars, parameter_vars);
-        uint_set::iterator it = used_vars.begin(), end = used_vars.end();
-        for (; it != end; ++it) {     
-            if (*it < m_var_is_sliceable.size()) {
-                m_var_is_sliceable[*it] = false;
+        for (unsigned uv : used_vars) {
+            if (uv < m_var_is_sliceable.size()) {
+                m_var_is_sliceable[uv] = false;
             }
         }
         //
@@ -530,6 +531,9 @@ namespace datalog {
             bool is_output = m_output[i];
             if (is_input && is_output) {
                 if (m_solved_vars[i].get()) {
+                    m_var_is_sliceable[i] = false;
+                }
+                if (parameter_vars.contains(i)) {
                     m_var_is_sliceable[i] = false;
                 }
             }
@@ -619,7 +623,7 @@ namespace datalog {
         for (unsigned j = r.get_uninterpreted_tail_size(); j < r.get_tail_size(); ++j) {
             conjs.push_back(r.get_tail(j));
         }
-        qe::flatten_and(conjs);
+        flatten_and(conjs);
         return conjs;
     }
 
@@ -676,21 +680,19 @@ namespace datalog {
     }
 
     void mk_slice::add_free_vars(uint_set& result, expr* e) {
-        ptr_vector<sort> sorts;
-        get_free_vars(e, sorts);
-        for (unsigned i = 0; i < sorts.size(); ++i) {
-            if (sorts[i]) {
+        expr_free_vars fv;
+        fv(e);
+        for (unsigned i = 0; i < fv.size(); ++i) {
+            if (fv[i]) {
                 result.insert(i);
             }
         }
     }
 
     void mk_slice::display(std::ostream& out) {
-        obj_map<func_decl, bit_vector>::iterator it  = m_sliceable.begin();
-        obj_map<func_decl, bit_vector>::iterator end = m_sliceable.end();
-        for (; it != end; ++it) {
-            out << it->m_key->get_name() << " ";
-            bit_vector const& bv = it->m_value;
+        for (auto const& kv : m_sliceable) {
+            out << kv.m_key->get_name() << " ";
+            bit_vector const& bv = kv.m_value;
             for (unsigned i = 0; i < bv.size(); ++i) {
                 out << (bv.get(i)?"1":"0");
             }
@@ -773,14 +775,11 @@ namespace datalog {
             init_vars(r);
             app_ref_vector tail(m);
             app_ref head(m);
-            ptr_vector<sort> sorts;
             update_predicate(r.get_head(), head);
-            get_free_vars(head.get(), sorts);
             for (unsigned i = 0; i < r.get_uninterpreted_tail_size(); ++i) {
                 app_ref t(m);
                 update_predicate(r.get_tail(i), t);
                 tail.push_back(t);
-                get_free_vars(t, sorts);
             }
             expr_ref_vector conjs = get_tail_conjs(r);
             
@@ -791,7 +790,7 @@ namespace datalog {
                 tail.push_back(to_app(e));                
             }
                         
-            new_rule = rm.mk(head.get(), tail.size(), tail.c_ptr(), (const bool*) 0);        
+            new_rule = rm.mk(head.get(), tail.size(), tail.c_ptr(), (const bool*) 0, r.name());        
 
             rm.fix_unbound_vars(new_rule, false);
 
@@ -816,9 +815,10 @@ namespace datalog {
         }
     }
 
-    rule_set * mk_slice::operator()(rule_set const & src) {        
+    rule_set * mk_slice::operator()(rule_set const & src) { 
+        rule_manager& rm = m_ctx.get_rule_manager();       
         for (unsigned i = 0; i < src.get_num_rules(); ++i) {
-            if (src.get_rule(i)->has_quantifiers()) {
+            if (rm.has_quantifiers(*src.get_rule(i))) {
                 return 0;
             }
         }

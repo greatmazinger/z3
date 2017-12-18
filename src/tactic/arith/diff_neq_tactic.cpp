@@ -20,10 +20,10 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"arith_decl_plugin.h"
-#include"ast_smt2_pp.h"
-#include"model.h"
+#include "tactic/tactical.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/ast_smt2_pp.h"
+#include "model/model.h"
 
 class diff_neq_tactic : public tactic {
     struct imp {
@@ -45,7 +45,6 @@ class diff_neq_tactic : public tactic {
         vector<diseqs>      m_var_diseqs;
         typedef svector<int> decision_stack;
         decision_stack       m_stack;
-        volatile bool        m_cancel;
         
         bool                m_produce_models;
         rational            m_max_k;
@@ -58,7 +57,6 @@ class diff_neq_tactic : public tactic {
             u(m),
             m_var2expr(m) {
             updt_params(p);
-            m_cancel = false;
         }
         
         void updt_params(params_ref const & p) {
@@ -67,11 +65,7 @@ class diff_neq_tactic : public tactic {
             if (m_max_k >= rational(INT_MAX/2)) 
                 m_max_k = rational(INT_MAX/2);
         }
-        
-        void set_cancel(bool f) {
-            m_cancel = f;
-        }
-        
+                
         void throw_not_supported() {
             throw tactic_exception("goal is not diff neq");
         }
@@ -101,13 +95,13 @@ class diff_neq_tactic : public tactic {
             if (is_uninterp_const(lhs) && u.is_numeral(rhs, k) && m_max_neg_k <= k && k <= m_max_k) {
                 var x  = mk_var(lhs);
                 int _k = static_cast<int>(k.get_int64());
-                m_upper[x] = _k;
+                m_upper[x] = std::min(m_upper[x], _k);
                 
             }
             else if (is_uninterp_const(rhs) && u.is_numeral(lhs, k) && m_max_neg_k <= k && k <= m_max_k) {
                 var x  = mk_var(rhs);
                 int _k = static_cast<int>(k.get_int64()); 
-                m_lower[x] = _k;
+                m_lower[x] = std::max(m_lower[x], _k);
             }
             else {
                 throw_not_supported();
@@ -294,8 +288,8 @@ class diff_neq_tactic : public tactic {
             init_forbidden();
             unsigned nvars = num_vars();
             while (m_stack.size() < nvars) {
-                if (m_cancel)
-                    throw tactic_exception(TACTIC_CANCELED_MSG);
+                if (m.canceled())
+                    throw tactic_exception(m.limit().get_cancel_msg());
                 TRACE("diff_neq_tactic", display_model(tout););
                 var x = m_stack.size();
                 if (extend_model(x))
@@ -318,11 +312,11 @@ class diff_neq_tactic : public tactic {
             return md;
         }
 
-        virtual void operator()(goal_ref const & g, 
-                                goal_ref_buffer & result, 
-                                model_converter_ref & mc, 
-                                proof_converter_ref & pc,
-                                expr_dependency_ref & core) {
+        void operator()(goal_ref const & g, 
+                        goal_ref_buffer & result, 
+                        model_converter_ref & mc, 
+                        proof_converter_ref & pc,
+                        expr_dependency_ref & core) {
             SASSERT(g->is_well_sorted());
             m_produce_models = g->models_enabled();
             mc = 0; pc = 0; core = 0; result.reset();
@@ -400,18 +394,10 @@ public:
     virtual void cleanup() {
         imp * d = alloc(imp, m_imp->m, m_params);
         d->m_num_conflicts = m_imp->m_num_conflicts;
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);        
         dealloc(d);
     }
 
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_diff_neq_tactic(ast_manager & m, params_ref const & p) {

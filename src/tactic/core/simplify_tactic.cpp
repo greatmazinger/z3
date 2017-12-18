@@ -16,9 +16,9 @@ Author:
 Notes:
 
 --*/
-#include"simplify_tactic.h"
-#include"th_rewriter.h"
-#include"ast_smt2_pp.h"
+#include "tactic/core/simplify_tactic.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "ast/ast_pp.h"
 
 struct simplify_tactic::imp {
     ast_manager &   m_manager;
@@ -31,11 +31,11 @@ struct simplify_tactic::imp {
         m_num_steps(0) {
     }
 
+    ~imp() {
+    }
+
     ast_manager & m() const { return m_manager; }
 
-    void set_cancel(bool f) {
-        m_r.set_cancel(f);
-    }
 
     void reset() {
         m_r.reset();
@@ -108,19 +108,12 @@ void simplify_tactic::operator()(goal_ref const & in,
     }
 }
 
-void simplify_tactic::set_cancel(bool f) {
-    if (m_imp)
-        m_imp->set_cancel(f);
-}
 
 void simplify_tactic::cleanup() {
     ast_manager & m = m_imp->m();
-    imp * d = alloc(imp, m, m_params);
-    #pragma omp critical (tactic_cancel)
-    {
-        std::swap(d, m_imp);
-    }
-    dealloc(d);
+    params_ref p = std::move(m_params);
+    m_imp->~imp();
+    new (m_imp) imp(m, p);
 }
 
 unsigned simplify_tactic::get_num_steps() const {

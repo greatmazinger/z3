@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_CLEANER_H_
-#define _SAT_CLEANER_H_
+#ifndef SAT_CLEANER_H_
+#define SAT_CLEANER_H_
 
-#include"sat_types.h"
-#include"statistics.h"
+#include "sat/sat_types.h"
+#include "util/statistics.h"
 
 namespace sat {
 

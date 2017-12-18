@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef __SUBPAVING_MPF_H_
-#define __SUBPAVING_MPF_H_
+#ifndef SUBPAVING_MPF_H_
+#define SUBPAVING_MPF_H_
 
-#include"subpaving_t.h"
-#include"mpf.h"
-#include"f2n.h"
+#include "math/subpaving/subpaving_t.h"
+#include "util/mpf.h"
+#include "util/f2n.h"
 
 namespace subpaving {
 
@@ -41,7 +41,7 @@ public:
 
 class context_mpf : public context_t<config_mpf> {
 public:
-    context_mpf(f2n<mpf_manager> & m, params_ref const & p, small_object_allocator * a):context_t<config_mpf>(config_mpf(m), p, a) {}
+ context_mpf(reslimit& lim, f2n<mpf_manager> & m, params_ref const & p, small_object_allocator * a):context_t<config_mpf>(lim, config_mpf(m), p, a) {}
 };
 
 };

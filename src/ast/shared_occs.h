@@ -16,11 +16,11 @@ Author:
 
 Revision History:
 --*/
-#ifndef _SHARED_OCCS_H_
-#define _SHARED_OCCS_H_
+#ifndef SHARED_OCCS_H_
+#define SHARED_OCCS_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
 
 class shared_occs_mark {
     ptr_buffer<ast> m_to_unmark;
@@ -75,7 +75,7 @@ public:
     iterator end_shared() const { return m_shared.end(); }
     void reset();
     void cleanup();
-    void display(std::ostream & out, ast_manager & m) const;
+    void display(std::ostream & out, ast_manager & mgr) const;
 };
 
 #endif

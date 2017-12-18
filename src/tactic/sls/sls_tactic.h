@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _SLS_TACTIC_H_
-#define _SLS_TACTIC_H_
+#ifndef SLS_TACTIC_H_
+#define SLS_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

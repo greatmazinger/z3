@@ -7,7 +7,7 @@ Module Name:
 
 Abstract:
 
-    Light weight partial quantifier-elimination procedures 
+    Light weight partial quantifier-elimination procedures
 
 Author:
 
@@ -18,12 +18,12 @@ Revision History:
 
 --*/
 
-#ifndef __QE_LITE_H__
-#define __QE_LITE_H__
+#ifndef QE_LITE_H_
+#define QE_LITE_H_
 
-#include "ast.h"
-#include "uint_set.h"
-#include "params.h"
+#include "ast/ast.h"
+#include "util/uint_set.h"
+#include "util/params.h"
 
 class tactic;
 
@@ -31,14 +31,17 @@ class qe_lite {
     class impl;
     impl * m_impl;
 public:
-    qe_lite(ast_manager& m);
+    /** 
+        use_array_der controls whether equalities over array reads are simplified
+     */
+    qe_lite(ast_manager& m, params_ref const & p, bool use_array_der = true);
 
     ~qe_lite();
 
     /**
        \brief
-       Apply light-weight quantifier elimination 
-       on constants provided as vector of variables. 
+       Apply light-weight quantifier elimination
+       on constants provided as vector of variables.
        Return the updated formula and updated set of variables that were not eliminated.
 
     */
@@ -59,8 +62,6 @@ public:
         \brief full rewriting based light-weight quantifier elimination round.
     */
     void operator()(expr_ref& fml, proof_ref& pr);
-
-    void set_cancel(bool f);
 };
 
 tactic * mk_qe_lite_tactic(ast_manager & m, params_ref const & p = params_ref());
@@ -68,4 +69,4 @@ tactic * mk_qe_lite_tactic(ast_manager & m, params_ref const & p = params_ref())
   ADD_TACTIC("qe-light", "apply light-weight quantifier elimination.", "mk_qe_lite_tactic(m, p)")
 */
 
-#endif 
+#endif

@@ -14,30 +14,25 @@ Author:
     Leonardo de Moura (leonardo) 2012-12-08
 
 Notes:
-    
+
 --*/
-#include<iostream>
-#include"z3.h"
-#include"api_log_macros.h"
-#include"api_context.h"
-#include"api_polynomial.h"
-#include"api_ast_vector.h"
-#include"expr2polynomial.h"
-#include"cancel_eh.h"
-#include"scoped_timer.h"
-#include"expr2var.h"
+#include "api/z3.h"
+#include "api/api_log_macros.h"
+#include "api/api_context.h"
+#include "api/api_polynomial.h"
+#include "api/api_ast_vector.h"
+#include "ast/expr2polynomial.h"
+#include "util/cancel_eh.h"
+#include "util/scoped_timer.h"
+#include "ast/expr2var.h"
 
 namespace api {
 
-    pmanager::pmanager():
-        m_pm(m_nm) {
+    pmanager::pmanager(reslimit& lim):
+        m_pm(lim, m_nm) {
     }
 
     pmanager::~pmanager() {
-    }
-    
-    void pmanager::set_cancel(bool f) {
-        m_pm.set_cancel(f);
     }
 
 };
@@ -57,7 +52,7 @@ extern "C" {
             SET_ERROR_CODE(Z3_INVALID_ARG);
             return 0;
         }
-        Z3_ast_vector_ref* result = alloc(Z3_ast_vector_ref, mk_c(c)->m());
+        Z3_ast_vector_ref* result = alloc(Z3_ast_vector_ref, *mk_c(c), mk_c(c)->m());
         mk_c(c)->save_object(result);
         if (converter.is_var(to_expr(x))) {
             expr2var const & mapping = converter.get_mapping();
@@ -65,8 +60,9 @@ extern "C" {
             polynomial_ref_vector rs(pm);
             polynomial_ref r(pm);
             expr_ref _r(mk_c(c)->m());
+
             {
-                cancel_eh<polynomial::manager> eh(pm);
+                cancel_eh<reslimit> eh(mk_c(c)->poly_limit());
                 api::context::set_interruptable si(*(mk_c(c)), eh);
                 scoped_timer timer(mk_c(c)->params().m_timeout, &eh);
                 pm.psc_chain(_p, _q, v_x, rs);

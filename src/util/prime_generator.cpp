@@ -16,7 +16,7 @@ Author:
 Notes:
 
 --*/
-#include"prime_generator.h"
+#include "util/prime_generator.h"
 
 #define PRIME_LIST_MAX_SIZE 1<<20
 
@@ -67,7 +67,9 @@ void prime_generator::process_next_k_numbers(uint64 k) {
             if (todo[k1] < p) {
                 m_primes.push_back(todo[k1]);
             }
-            break;
+            else {
+                break;
+            }
         }
         unsigned k2 = 0;
         for (; k1 < todo_sz; k1++, k2++) {

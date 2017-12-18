@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _SMT2_UTIL_H_
-#define _SMT2_UTIL_H_
+#ifndef SMT2_UTIL_H_
+#define SMT2_UTIL_H_
 
-#include"symbol.h"
+#include "util/symbol.h"
 
 bool is_smt2_simple_symbol_char(char c);
 bool is_smt2_quoted_symbol(char const * s);

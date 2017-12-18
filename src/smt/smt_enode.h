@@ -16,14 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_ENODE_H_
-#define _SMT_ENODE_H_
+#ifndef SMT_ENODE_H_
+#define SMT_ENODE_H_
 
-#include"ast.h"
-#include"smt_types.h"
-#include"smt_eq_justification.h"
-#include"smt_theory_var_list.h"
-#include"approx_set.h"
+#include "ast/ast.h"
+#include "smt/smt_types.h"
+#include "smt/smt_eq_justification.h"
+#include "smt/smt_theory_var_list.h"
+#include "util/approx_set.h"
 
 namespace smt {
     /**
@@ -40,10 +40,10 @@ namespace smt {
 
     /** \ brief Use sparse maps in SMT solver.
 
-	Define this to use hash maps rather than vectors over ast
-	nodes. This is useful in the case there are many solvers, each
-	referencing few nodes from a large ast manager. There is some
-	unknown performance penalty for this. */
+    Define this to use hash maps rather than vectors over ast
+    nodes. This is useful in the case there are many solvers, each
+    referencing few nodes from a large ast manager. There is some
+    unknown performance penalty for this. */
 
     // #define SPARSE_MAP
 
@@ -52,11 +52,11 @@ namespace smt {
 #else
     class app2enode_t : public u_map<enode *> {
     public:
-      void setx(unsigned x, enode *val, enode *def){
-	if(val == 0)
-	  erase(x);
-	else
-	  insert(x,val);
+        void setx(unsigned x, enode *val, enode *def){
+            if (val == 0)
+                erase(x);
+            else
+                insert(x,val);
       }
     };
 #endif
@@ -105,7 +105,7 @@ namespace smt {
         enode_vector        m_parents;          //!< Parent enodes of the equivalence class.
         theory_var_list     m_th_var_list;      //!< List of theories that 'care' about this enode.
         trans_justification m_trans;            //!< A justification for the enode being equal to its root.
-        char                m_lbl_hash;         //!< It is different from -1, if enode is used in a pattern
+        signed char         m_lbl_hash;         //!< It is different from -1, if enode is used in a pattern
         approx_set          m_lbls;
         approx_set          m_plbls;
         enode *             m_args[0];          //!< Cached args
@@ -113,6 +113,7 @@ namespace smt {
         friend class context;
         friend class euf_manager;
         friend class conflict_resolution;
+        
 
         theory_var_list * get_th_var_list() { 
             return m_th_var_list.get_th_var() == null_theory_var ? 0 : &m_th_var_list; 
@@ -170,6 +171,7 @@ namespace smt {
             m_interpreted = true;
         }
 
+
         void del_eh(ast_manager & m, bool update_children_parent = true);
         
         app * get_owner() const { 
@@ -191,6 +193,7 @@ namespace smt {
         unsigned hash() const {
             return m_owner->hash();
         }
+
 
         enode * get_root() const { 
             return m_root; 
@@ -401,5 +404,5 @@ namespace smt {
 
 };
 
-#endif /* _SMT_ENODE_H_ */
+#endif /* SMT_ENODE_H_ */
 

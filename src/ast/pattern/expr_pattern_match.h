@@ -17,11 +17,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _EXPR_PATTERN_MATCH_H_
-#define _EXPR_PATTERN_MATCH_H_
+#ifndef EXPR_PATTERN_MATCH_H_
+#define EXPR_PATTERN_MATCH_H_
 
-#include"ast.h"
-#include"map.h"
+#include "ast/ast.h"
+#include "util/map.h"
 
 class expr_pattern_match {
 
@@ -37,7 +37,7 @@ class expr_pattern_match {
         CHECK_TERM,
         SET_BOUND,
         CHECK_BOUND,        
-        YIELD,
+        YIELD
     };
 
     struct instr {

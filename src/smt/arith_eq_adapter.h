@@ -16,14 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _ARITH_EQ_ADAPTER_H_
-#define _ARITH_EQ_ADAPTER_H_
+#ifndef ARITH_EQ_ADAPTER_H_
+#define ARITH_EQ_ADAPTER_H_
 
-#include"smt_theory.h"
-#include"obj_pair_hashtable.h"
-#include"arith_decl_plugin.h"
-#include"statistics.h"
-#include"arith_simplifier_plugin.h"
+#include "smt/smt_theory.h"
+#include "util/obj_pair_hashtable.h"
+#include "ast/arith_decl_plugin.h"
+#include "util/statistics.h"
 
 namespace smt {
 
@@ -65,20 +64,17 @@ namespace smt {
         theory &                         m_owner;
         theory_arith_params &            m_params;
         arith_util &                     m_util;
-        arith_simplifier_plugin *        m_as;
 
         already_processed                m_already_processed;
-        svector<enode_pair>              m_restart_pairs;
+        enode_pair_vector                m_restart_pairs;
         svector<parameter>               m_proof_hint;
 
         context & get_context() const { return m_owner.get_context(); }
         ast_manager & get_manager() const { return m_owner.get_manager(); }
         enode * get_enode(theory_var v) const { return m_owner.get_enode(v); }
 
-        arith_simplifier_plugin * get_simplifier();
-
     public:
-        arith_eq_adapter(theory & owner, theory_arith_params & params, arith_util & u):m_owner(owner), m_params(params), m_util(u), m_as(0) {}
+        arith_eq_adapter(theory & owner, theory_arith_params & params, arith_util & u):m_owner(owner), m_params(params), m_util(u) {}
         void new_eq_eh(theory_var v1, theory_var v2);
         void new_diseq_eh(theory_var v1, theory_var v2);
         void reset_eh();
@@ -93,5 +89,5 @@ namespace smt {
     };
 };
 
-#endif /* _ARITH_EQ_ADAPTER_H_ */
+#endif /* ARITH_EQ_ADAPTER_H_ */
 

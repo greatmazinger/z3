@@ -16,102 +16,23 @@ Author:
 Notes:
 
 --*/
-#include"tactical.h"
-#include"extension_model_converter.h"
-#include"filter_model_converter.h"
-#include"rewriter_def.h"
-#include"arith_decl_plugin.h"
-#include"bv_decl_plugin.h"
-#include"array_decl_plugin.h"
-#include"datatype_decl_plugin.h"
-#include"cooperate.h"
-#include"ast_smt2_pp.h"
-#include"ast_ll_pp.h"
+#include "tactic/tactical.h"
+#include "tactic/extension_model_converter.h"
+#include "tactic/filter_model_converter.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/array_decl_plugin.h"
+#include "ast/datatype_decl_plugin.h"
+#include "tactic/core/collect_occs.h"
+#include "util/cooperate.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/ast_ll_pp.h"
 
 class elim_uncnstr_tactic : public tactic {
 
     struct imp {
         // unconstrained vars collector
-        struct collect {
-            expr_fast_mark1  m_visited;
-            expr_fast_mark2  m_more_than_once;
-            typedef std::pair<expr *, unsigned> frame;
-            svector<frame>   m_stack;
-            ptr_vector<app>  m_vars;
-            
-            bool visit(expr * t) {
-                if (m_visited.is_marked(t)) {
-                    if (is_uninterp_const(t))
-                        m_more_than_once.mark(t);
-                    return true;
-                }
-                m_visited.mark(t);
-                if (is_uninterp_const(t)) {
-                    m_vars.push_back(to_app(t));
-                    return true;
-                }
-                if (is_var(t))
-                    return true;
-                if (is_app(t) && to_app(t)->get_num_args() == 0)
-                    return true;
-                m_stack.push_back(frame(t, 0));
-                return false;
-            }
-            
-            void process(expr * t) {
-                SASSERT(m_stack.empty());
-                if (visit(t))
-                    return;
-                SASSERT(!m_stack.empty());
-                unsigned num;
-                expr * child;
-                while (!m_stack.empty()) {
-                start:
-                    frame & fr = m_stack.back();
-                    expr *  t  = fr.first;
-                    switch (t->get_kind()) {
-                    case AST_APP:
-                        num = to_app(t)->get_num_args();
-                        while (fr.second < num) {
-                            child = to_app(t)->get_arg(fr.second);
-                            fr.second++;
-                            if (!visit(child))
-                                goto start;
-                        }
-                        m_stack.pop_back();
-                        break;
-                    case AST_QUANTIFIER:
-                        // don't need to visit patterns
-                        child = to_quantifier(t)->get_expr();
-                        fr.second++;
-                        if (!visit(child))
-                            goto start;
-                        m_stack.pop_back();
-                        break;
-                    default:
-                        UNREACHABLE();
-                    }
-                }
-            }
-            
-            void operator()(goal const & g, obj_hashtable<expr> & r) {
-                unsigned sz = g.size();
-                for (unsigned i = 0; i < sz; i++) {
-                    expr * t = g.form(i);
-                    process(t);
-                }
-                
-                ptr_vector<app>::const_iterator it  = m_vars.begin();
-                ptr_vector<app>::const_iterator end = m_vars.end();
-                for (; it != end; ++it) {
-                    if (m_more_than_once.is_marked(*it))
-                        continue;
-                    r.insert(*it);
-                }
-                m_visited.reset();
-                m_more_than_once.reset();
-            }
-        };
 
         typedef extension_model_converter mc;
 
@@ -253,11 +174,8 @@ class elim_uncnstr_tactic : public tactic {
                 if (fid == m_dt_util.get_family_id()) {
                     // In the current implementation, I only handle the case where
                     // the datatype has a recursive constructor.
-                    ptr_vector<func_decl> const * constructors = m_dt_util.get_datatype_constructors(s);
-                    ptr_vector<func_decl>::const_iterator it   = constructors->begin();
-                    ptr_vector<func_decl>::const_iterator end  = constructors->end();
-                    for (; it != end; ++it) {
-                        func_decl * constructor = *it;
+                    ptr_vector<func_decl> const & constructors = *m_dt_util.get_datatype_constructors(s);
+                    for (func_decl * constructor : constructors) {
                         unsigned num    = constructor->get_arity();
                         unsigned target = UINT_MAX;
                         for (unsigned i = 0; i < num; i++) {
@@ -786,10 +704,10 @@ class elim_uncnstr_tactic : public tactic {
                         app * u;
                         if (!mk_fresh_uncnstr_var_for(f, num, args, u))
                             return u;
-                        ptr_vector<func_decl> const * accs = m_dt_util.get_constructor_accessors(c);
+                        ptr_vector<func_decl> const & accs = *m_dt_util.get_constructor_accessors(c);
                         ptr_buffer<expr> new_args;
-                        for (unsigned i = 0; i < accs->size(); i++) {
-                            if (accs->get(i) == f) 
+                        for (unsigned i = 0; i < accs.size(); i++) {
+                            if (accs[i] == f) 
                                 new_args.push_back(u);
                             else
                                 new_args.push_back(m().get_some_value(c->get_domain(i)));
@@ -805,9 +723,9 @@ class elim_uncnstr_tactic : public tactic {
                             return u;
                         if (!m_mc)
                             return u;
-                        ptr_vector<func_decl> const * accs = m_dt_util.get_constructor_accessors(f);
+                        ptr_vector<func_decl> const & accs = *m_dt_util.get_constructor_accessors(f);
                         for (unsigned i = 0; i < num; i++) {
-                            add_def(args[i], m().mk_app(accs->get(i), u));
+                            add_def(args[i], m().mk_app(accs[i], u));
                         }
                         return u;
                     }
@@ -895,13 +813,10 @@ class elim_uncnstr_tactic : public tactic {
         }
         
         void init_rw(bool produce_proofs) {
-            #pragma omp critical (tactic_cancel)
-            {
-                m_rw = alloc(rw, m(), produce_proofs, m_vars, m_mc.get(), m_max_memory, m_max_steps);
-            }
+            m_rw = alloc(rw, m(), produce_proofs, m_vars, m_mc.get(), m_max_memory, m_max_steps);            
         }
 
-        virtual void operator()(goal_ref const & g, 
+        void operator()(goal_ref const & g, 
                                 goal_ref_buffer & result, 
                                 model_converter_ref & mc, 
                                 proof_converter_ref & pc,
@@ -913,7 +828,7 @@ class elim_uncnstr_tactic : public tactic {
             TRACE("elim_uncnstr_bug", g->display(tout););
             tactic_report report("elim-uncnstr-vars", *g);
             m_vars.reset();
-            collect p;
+            collect_occs p;
             p(*g, m_vars);
             if (m_vars.empty()) {
                 result.push_back(g.get());
@@ -968,10 +883,7 @@ class elim_uncnstr_tactic : public tactic {
                         }
                     }
                     m_mc = 0;
-                    #pragma omp critical (tactic_cancel)
-                    {
-                        m_rw  = 0;
-                    }
+                    m_rw  = 0;                    
                     TRACE("elim_uncnstr", if (mc) mc->display(tout););
                     result.push_back(g.get());
                     g->inc_depth();
@@ -983,7 +895,7 @@ class elim_uncnstr_tactic : public tactic {
                 m_rw->reset(); // reset cache
                 m_vars.reset(); 
                 {
-                    collect p;
+                    collect_occs p;
                     p(*g, m_vars);
                 }
                 if (m_vars.empty()) 
@@ -993,10 +905,6 @@ class elim_uncnstr_tactic : public tactic {
             }
         }
         
-        void set_cancel(bool f) {
-            if (m_rw)
-                m_rw->set_cancel(f);
-        }
     };
     
     imp *      m_imp;
@@ -1038,10 +946,7 @@ public:
         unsigned num_elim_apps = get_num_elim_apps();
         ast_manager & m = m_imp->m_manager;        
         imp * d = alloc(imp, m, m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);        
         dealloc(d);
         m_imp->m_num_elim_apps = num_elim_apps;
     }
@@ -1058,11 +963,6 @@ public:
         m_imp->m_num_elim_apps = 0;
     }
 
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_elim_uncnstr_tactic(ast_manager & m, params_ref const & p) {

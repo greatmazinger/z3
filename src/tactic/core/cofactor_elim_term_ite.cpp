@@ -16,28 +16,27 @@ Author:
 Revision History:
 
 --*/
-#include"cofactor_elim_term_ite.h"
-#include"mk_simplified_app.h"
-#include"rewriter_def.h"
-#include"cooperate.h"
-#include"for_each_expr.h"
-#include"ast_smt2_pp.h"
-#include"ast_ll_pp.h"
-#include"tactic.h"
+#include "tactic/core/cofactor_elim_term_ite.h"
+#include "ast/rewriter/mk_simplified_app.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "util/cooperate.h"
+#include "ast/for_each_expr.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/ast_ll_pp.h"
+#include "tactic/tactic.h"
 
 struct cofactor_elim_term_ite::imp {
     ast_manager &      m;
     params_ref         m_params;
     unsigned long long m_max_memory;
     bool               m_cofactor_equalities;
-    volatile bool      m_cancel;
 
     void checkpoint() { 
         cooperate("cofactor ite");
         if (memory::get_allocation_size() > m_max_memory)
             throw tactic_exception(TACTIC_MAX_MEMORY_MSG);
-        if (m_cancel)
-            throw tactic_exception(TACTIC_CANCELED_MSG);
+        if (m.canceled())
+            throw tactic_exception(m.limit().get_cancel_msg());
     }
 
     // Collect atoms that contain term if-then-else
@@ -315,9 +314,6 @@ struct cofactor_elim_term_ite::imp {
         r.insert("cofactor_equalities", CPK_BOOL, "(default: true) use equalities to rewrite bodies of ite-expressions. This is potentially expensive.");
     }
 
-    void set_cancel(bool f) {
-        m_cancel = f;
-    }
 
     struct cofactor_rw_cfg : public default_rewriter_cfg {
         ast_manager &         m;
@@ -659,7 +655,6 @@ struct cofactor_elim_term_ite::imp {
         m(_m),
         m_params(p),
         m_cofactor_equalities(true) {
-        m_cancel = false;
         updt_params(p);
     }
 
@@ -698,18 +693,11 @@ void cofactor_elim_term_ite::operator()(expr * t, expr_ref & r) {
     m_imp->operator()(t, r);
 }
     
-void cofactor_elim_term_ite::set_cancel(bool f) {
-    if (m_imp)
-        m_imp->set_cancel(f);
-}
 
 void cofactor_elim_term_ite::cleanup() {
     ast_manager & m = m_imp->m;    
     imp * d = alloc(imp, m, m_params);
-    #pragma omp critical (tactic_cancel)
-    {
-        std::swap(d, m_imp);
-    }
+    std::swap(d, m_imp);    
     dealloc(d);
 }
 

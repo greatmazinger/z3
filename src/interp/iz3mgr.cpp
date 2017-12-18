@@ -27,15 +27,17 @@
 #pragma warning(disable:4800)
 #endif
 
-#include "iz3mgr.h"
+#include "interp/iz3mgr.h"
 
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
 #include <ostream>
+#include <sstream>
 
-#include "expr_abstract.h"
-#include "params.h"
+#include "ast/expr_abstract.h"
+#include "util/params.h"
+#include "ast/used_vars.h"
 
 
 using namespace stl_ext;
@@ -515,7 +517,7 @@ bool iz3mgr::is_farkas_coefficient_negative(const ast &proof, int n){
     symb s = sym(proof);
     bool ok = s->get_parameter(n+2).is_rational(r);
     if(!ok)
-        throw "Bad Farkas coefficient";
+        throw iz3_exception("Bad Farkas coefficient");
     return r.is_neg();
 }
 
@@ -532,7 +534,7 @@ void iz3mgr::get_farkas_coeffs(const ast &proof, std::vector<rational>& rats){
         rational r;
         bool ok = s->get_parameter(i).is_rational(r);
         if(!ok)
-            throw "Bad Farkas coefficient";
+            throw iz3_exception("Bad Farkas coefficient");
 #if 0 
         {
             ast con = conc(prem(proof,i-2));
@@ -553,6 +555,20 @@ void iz3mgr::get_farkas_coeffs(const ast &proof, std::vector<rational>& rats){
     }
 #endif
     abs_rat(rats);
+    extract_lcd(rats);
+}
+
+void iz3mgr::get_broken_gcd_test_coeffs(const ast &proof, std::vector<rational>& rats){
+    symb s = sym(proof);
+    int numps = s->get_num_parameters();
+    rats.resize(numps-2);
+    for(int i = 2; i < numps; i++){
+        rational r;
+        bool ok = s->get_parameter(i).is_rational(r);
+        if(!ok)
+            throw "Bad Farkas coefficient";
+        rats[i-2] = r;
+    }
     extract_lcd(rats);
 }
 
@@ -577,7 +593,7 @@ void iz3mgr::get_assign_bounds_coeffs(const ast &proof, std::vector<rational>& r
         rational r;
         bool ok = s->get_parameter(i).is_rational(r);
         if(!ok)
-            throw "Bad Farkas coefficient";
+            throw iz3_exception("Bad Farkas coefficient");
         {
             ast con = arg(conc(proof),i-1);
             ast temp = make_real(r); // for debugging
@@ -593,11 +609,35 @@ void iz3mgr::get_assign_bounds_coeffs(const ast &proof, std::vector<rational>& r
     if(rats[1].is_neg()){ // work around bug -- if all coeffs negative, negate them
         for(unsigned i = 1; i < rats.size(); i++){
             if(!rats[i].is_neg())
-                throw "Bad Farkas coefficients";
+                throw iz3_exception("Bad Farkas coefficients");
             rats[i] = -rats[i];
         }
     }
 #endif
+    abs_rat(rats);
+    extract_lcd(rats);
+}
+
+void iz3mgr::get_gomory_cut_coeffs(const ast &proof, std::vector<ast>& coeffs){
+    std::vector<rational> rats;
+    get_gomory_cut_coeffs(proof,rats);
+    coeffs.resize(rats.size());
+    for(unsigned i = 0; i < rats.size(); i++){
+        coeffs[i] = make_int(rats[i]);
+    }
+}
+
+void iz3mgr::get_gomory_cut_coeffs(const ast &proof, std::vector<rational>& rats){
+    symb s = sym(proof);
+    int numps = s->get_num_parameters();
+    rats.resize(numps-2);
+    for(int i = 2; i < numps; i++){
+        rational r;
+        bool ok = s->get_parameter(i).is_rational(r);
+        if(!ok)
+            throw "Bad Farkas coefficient";
+        rats[i-2] = r;
+    }
     abs_rat(rats);
     extract_lcd(rats);
 }
@@ -623,7 +663,7 @@ void iz3mgr::get_assign_bounds_rule_coeffs(const ast &proof, std::vector<rationa
         rational r;
         bool ok = s->get_parameter(i).is_rational(r);
         if(!ok)
-            throw "Bad Farkas coefficient";
+            throw iz3_exception("Bad Farkas coefficient");
         {
             ast con = conc(prem(proof,i-2));
             ast temp = make_real(r); // for debugging
@@ -639,7 +679,7 @@ void iz3mgr::get_assign_bounds_rule_coeffs(const ast &proof, std::vector<rationa
     if(rats[1].is_neg()){ // work around bug -- if all coeffs negative, negate them
         for(unsigned i = 1; i < rats.size(); i++){
             if(!rats[i].is_neg())
-                throw "Bad Farkas coefficients";
+                throw iz3_exception("Bad Farkas coefficients");
             rats[i] = -rats[i];
         }
     }
@@ -671,7 +711,7 @@ void iz3mgr::linear_comb(ast &P, const ast &c, const ast &Q, bool round_off){
             qstrict = true;
             break;
         default:
-            throw "not an inequality";
+            throw iz3_exception("not an inequality");
         }
     }
     else {
@@ -691,10 +731,12 @@ void iz3mgr::linear_comb(ast &P, const ast &c, const ast &Q, bool round_off){
             qstrict = true;
             break;
         default:
-            throw "not an inequality";
+            throw iz3_exception("not an inequality");
         }
     }
     bool pstrict = op(P) == Lt;
+    if (round_off && get_type(Qrhs) != int_type())
+        round_off = false;
     if(qstrict && round_off && (pstrict || !(c == make_int(rational(1))))){
         Qrhs = make(Sub,Qrhs,make_int(rational(1)));
         qstrict = false;
@@ -898,3 +940,30 @@ void iz3mgr::get_bound_substitutes(stl_ext::hash_map<ast,bool> &memo, const ast 
  
     }
 #endif
+
+unsigned  iz3mgr::num_free_variables(const ast &e){
+    used_vars uv;
+    uv(to_expr(e.raw()));
+    return uv.get_num_vars();
+}
+
+iz3mgr::ast iz3mgr::close_universally (ast e){
+   used_vars uv;
+   uv(to_expr(e.raw()));
+   std::vector<ast> bvs;
+   stl_ext::hash_map<ast,ast> subst_memo;
+   for (unsigned i = 0; i < uv.get_max_found_var_idx_plus_1(); i++){
+       if (uv.get(i)) {
+           std::ostringstream os;
+           os << "%%" << i;
+           ast c = make_var(os.str(),uv.get(i));
+           ast v = cook(m().mk_var(i,uv.get(i)));
+           subst_memo[v] = c;
+           bvs.push_back(c);
+       }
+   }
+   e = subst(subst_memo,e);
+   for (unsigned i = 0; i < bvs.size(); i++)
+       e = apply_quant(Forall,bvs[i],e);
+   return e;
+}

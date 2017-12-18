@@ -15,22 +15,22 @@ Author:
 Notes:
 
 --*/
-#include"cmd_context.h"
-#include"dl_cmds.h"
-#include"dl_external_relation.h"
-#include"dl_context.h"
-#include"dl_register_engine.h"
-#include"dl_decl_plugin.h"
-#include"dl_instruction.h"
-#include"dl_compiler.h"
-#include"dl_rule.h"
-#include"ast_pp.h"
-#include"parametric_cmd.h"
-#include"cancel_eh.h"
-#include"scoped_ctrl_c.h"
-#include"scoped_timer.h"
-#include"trail.h"
-#include"fixedpoint_params.hpp"
+#include "cmd_context/cmd_context.h"
+#include "muz/fp/dl_cmds.h"
+#include "muz/rel/dl_external_relation.h"
+#include "muz/base/dl_context.h"
+#include "muz/fp/dl_register_engine.h"
+#include "ast/dl_decl_plugin.h"
+#include "muz/rel/dl_instruction.h"
+#include "muz/rel/dl_compiler.h"
+#include "muz/base/dl_rule.h"
+#include "ast/ast_pp.h"
+#include "cmd_context/parametric_cmd.h"
+#include "util/cancel_eh.h"
+#include "util/scoped_ctrl_c.h"
+#include "util/scoped_timer.h"
+#include "util/trail.h"
+#include "muz/base/fixedpoint_params.hpp"
 #include<iomanip>
 
 
@@ -103,7 +103,7 @@ struct dl_context {
     void add_rule(expr * rule, symbol const& name, unsigned bound) {
         init();
         if (m_collected_cmds) {
-            expr_ref rl = m_context->bind_variables(rule, true);
+            expr_ref rl = m_context->bind_vars(rule, true);
             m_collected_cmds->m_rules.push_back(rl);
             m_collected_cmds->m_names.push_back(name);
             m_trail.push(push_back_vector<dl_context, expr_ref_vector>(m_collected_cmds->m_rules));
@@ -114,9 +114,16 @@ struct dl_context {
         }
     }    
 
-    bool collect_query(expr* q) {
+    bool collect_query(func_decl* q) {
         if (m_collected_cmds) {
-            expr_ref qr = m_context->bind_variables(q, false);
+            ast_manager& m = m_cmd.m();
+            expr_ref qr(m);
+            expr_ref_vector args(m);
+            for (unsigned i = 0; i < q->get_arity(); ++i) {
+                args.push_back(m.mk_var(i, q->get_domain(i)));
+            }
+            qr = m.mk_app(q, args.size(), args.c_ptr());
+            qr = m_context->bind_vars(qr, false);
             m_collected_cmds->m_queries.push_back(qr);
             m_trail.push(push_back_vector<dl_context, expr_ref_vector>(m_collected_cmds->m_queries));
             return true;
@@ -182,39 +189,48 @@ public:
         m_bound = bound;
         m_arg_idx++;
     }
-    virtual void reset(cmd_context & ctx) { m_dl_ctx->reset(); prepare(ctx); }
+    virtual void reset(cmd_context & ctx) { m_dl_ctx->reset(); prepare(ctx); m_t = nullptr; }
     virtual void prepare(cmd_context& ctx) { m_arg_idx = 0; m_name = symbol::null; m_bound = UINT_MAX; }
     virtual void finalize(cmd_context & ctx) { 
     }
     virtual void execute(cmd_context & ctx) {
-      m_dl_ctx->add_rule(m_t, m_name, m_bound);
+        if (!m_t) throw cmd_exception("invalid rule, expected formula");
+        m_dl_ctx->add_rule(m_t, m_name, m_bound);
     }
 };
 
 class dl_query_cmd : public parametric_cmd {
     ref<dl_context> m_dl_ctx;
-    expr* m_target;
+    func_decl* m_target;
 public:
     dl_query_cmd(dl_context * dl_ctx):
         parametric_cmd("query"),
         m_dl_ctx(dl_ctx),
         m_target(0) {
     }
-    virtual char const * get_usage() const { return "(exists (q) (and body))"; }
+    virtual char const * get_usage() const { return "predicate"; }
     virtual char const * get_main_descr() const { 
-        return "pose a query based on the Horn rules."; 
+        return "pose a query to a predicate based on the Horn rules."; 
     }
 
     virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
-        if (m_target == 0) return CPK_EXPR;
+        if (m_target == 0) return CPK_FUNC_DECL;
         return parametric_cmd::next_arg_kind(ctx);
     }
 
-    virtual void set_next_arg(cmd_context & ctx, expr * t) {
+    virtual void set_next_arg(cmd_context & ctx, func_decl* t) {
         m_target = t;
+        if (t->get_family_id() != null_family_id) {
+            throw cmd_exception("Invalid query argument, expected uinterpreted function name, but argument is interpreted");
+        }
+        datalog::context& dlctx = m_dl_ctx->dlctx();
+        if (!dlctx.get_predicates().contains(t)) {
+            throw cmd_exception("Invalid query argument, expected a predicate registered as a relation");
+        }
     }
 
     virtual void prepare(cmd_context & ctx) { 
+        ctx.m(); // ensure manager is initialized.
         parametric_cmd::prepare(ctx);
         m_target   = 0; 
     }
@@ -230,15 +246,16 @@ public:
         set_background(ctx);        
         dlctx.updt_params(m_params);
         unsigned timeout   = m_dl_ctx->get_params().timeout(); 
-        cancel_eh<datalog::context> eh(dlctx);
+        cancel_eh<reslimit> eh(ctx.m().limit());
         bool query_exn = false;
         lbool status = l_undef;
         {
+            IF_VERBOSE(10, verbose_stream() << "(query)\n";);
             scoped_ctrl_c ctrlc(eh);
             scoped_timer timer(timeout, &eh);
             cmd_context::scoped_watch sw(ctx);
             try {
-                status = dlctx.query(m_target);
+                status = dlctx.rel_query(1, &m_target);
             }
             catch (z3_error & ex) {
                 ctx.regular_stream() << "(error \"query failed: " << ex.msg() << "\")" << std::endl;
@@ -260,10 +277,10 @@ public:
             print_certificate(ctx);
             break;
         case l_undef: 
-            if(dlctx.get_status() == datalog::BOUNDED){
-              ctx.regular_stream() << "bounded\n";
-              print_certificate(ctx);
-              break;
+            if (dlctx.get_status() == datalog::BOUNDED){
+                ctx.regular_stream() << "bounded\n";
+                print_certificate(ctx);
+                break;
             }
             ctx.regular_stream() << "unknown\n";
             switch(dlctx.get_status()) {
@@ -284,6 +301,7 @@ public:
                 break;
 
             case datalog::OK: 
+                (void)query_exn;
                 SASSERT(query_exn);
                 break;
 
@@ -337,12 +355,8 @@ private:
         if (m_dl_ctx->get_params().print_statistics()) {
             statistics st;
             datalog::context& dlctx = m_dl_ctx->dlctx();
-            unsigned long long max_mem = memory::get_max_used_memory();
-            unsigned long long mem = memory::get_allocation_size();
             dlctx.collect_statistics(st);
             st.update("time", ctx.get_seconds());            
-            st.update("memory", static_cast<double>(mem)/static_cast<double>(1024*1024));
-            st.update("max-memory", static_cast<double>(max_mem)/static_cast<double>(1024*1024));
             st.display_smt2(ctx.regular_stream());            
         }
     }
@@ -361,12 +375,9 @@ class dl_declare_rel_cmd : public cmd {
     unsigned         m_arg_idx;
     mutable unsigned m_query_arg_idx;
     symbol           m_rel_name;
-    scoped_ptr<sort_ref_vector>  m_domain;
+    ptr_vector<sort> m_domain;
     svector<symbol>  m_kinds;
 
-    void ensure_domain(cmd_context& ctx) {
-        if (!m_domain) m_domain = alloc(sort_ref_vector, ctx.m());
-    }
 
 public:
     dl_declare_rel_cmd(dl_context * dl_ctx):
@@ -379,9 +390,10 @@ public:
     virtual unsigned get_arity() const { return VAR_ARITY; }
 
     virtual void prepare(cmd_context & ctx) {
+        ctx.m(); // ensure manager is initialized.
         m_arg_idx = 0; 
         m_query_arg_idx = 0; 
-        m_domain = 0;
+        m_domain.reset();
         m_kinds.reset();
     }
     virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
@@ -392,8 +404,8 @@ public:
         }
     }
     virtual void set_next_arg(cmd_context & ctx, unsigned num, sort * const * slist) {
-        ensure_domain(ctx);
-        m_domain->append(num, slist);
+        m_domain.reset();
+        m_domain.append(num, slist);
         m_arg_idx++;
     }
     virtual void set_next_arg(cmd_context & ctx, symbol const & s) {
@@ -410,14 +422,12 @@ public:
         if(m_arg_idx<2) {
             throw cmd_exception("at least 2 arguments expected");
         }
-        ensure_domain(ctx);
         ast_manager& m = ctx.m();
 
         func_decl_ref pred(
-            m.mk_func_decl(m_rel_name, m_domain->size(), m_domain->c_ptr(), m.mk_bool_sort()), m);
+            m.mk_func_decl(m_rel_name, m_domain.size(), m_domain.c_ptr(), m.mk_bool_sort()), m);
         ctx.insert(pred);
         m_dl_ctx->register_predicate(pred, m_kinds.size(), m_kinds.c_ptr());
-        m_domain = 0;
     }
 
 };
@@ -439,6 +449,7 @@ public:
     virtual unsigned get_arity() const { return 2; }
 
     virtual void prepare(cmd_context & ctx) {
+        ctx.m(); // ensure manager is initialized.
         m_arg_idx = 0; 
     }
     virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
@@ -512,13 +523,8 @@ static void install_dl_cmds_aux(cmd_context& ctx, dl_collected_cmds* collected_c
     ctx.insert(alloc(dl_query_cmd, dl_ctx));
     ctx.insert(alloc(dl_declare_rel_cmd, dl_ctx));
     ctx.insert(alloc(dl_declare_var_cmd, dl_ctx));
-    // #ifndef _EXTERNAL_RELEASE
-    // TODO: we need these!
-#if 1
-    ctx.insert(alloc(dl_push_cmd, dl_ctx)); // not exposed to keep command-extensions simple.
+    ctx.insert(alloc(dl_push_cmd, dl_ctx)); 
     ctx.insert(alloc(dl_pop_cmd, dl_ctx));
-#endif
-    // #endif
 }
 
 void install_dl_cmds(cmd_context & ctx) {

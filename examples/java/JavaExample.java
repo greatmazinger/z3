@@ -170,10 +170,9 @@ class JavaExample
         String bench = "(benchmark comm :formula (forall (x " + t.getName()
                 + ") (y " + t.getName() + ") (= (" + f.getName() + " x y) ("
                 + f.getName() + " y x))))";
-        ctx.parseSMTLIBString(bench, new Symbol[] { t.getName() },
+        return ctx.parseSMTLIB2String(bench, new Symbol[] { t.getName() },
                 new Sort[] { t }, new Symbol[] { f.getName() },
                 new FuncDecl[] { f });
-        return ctx.getSMTLIBFormulas()[0];
     }
 
     // / "Hello world" example: create a Z3 logical context, and delete it.
@@ -188,7 +187,7 @@ class JavaExample
             /* do something with the context */
 
             /* be kind to dispose manually and not wait for the GC. */
-            ctx.dispose();
+            ctx.close();
         }
     }
 
@@ -281,7 +280,7 @@ class JavaExample
     }
 
     void disprove(Context ctx, BoolExpr f, boolean useMBQI) 
-		throws TestFailedException
+        throws TestFailedException
     {
         BoolExpr[] a = {};
         disprove(ctx, f, useMBQI, a);
@@ -1028,21 +1027,6 @@ class JavaExample
             }
     }
 
-    // / Shows how to read an SMT1 file.
-
-    void smt1FileTest(String filename)
-    {
-        System.out.print("SMT File test ");
-
-        {
-            HashMap<String, String> cfg = new HashMap<String, String>();
-            Context ctx = new Context(cfg);
-            ctx.parseSMTLIBFile(filename, null, null, null, null);
-
-            BoolExpr a = ctx.mkAnd(ctx.getSMTLIBFormulas());
-            System.out.println("read formula: " + a);
-        }
-    }
 
     // / Shows how to read an SMT2 file.
 
@@ -1459,15 +1443,13 @@ class JavaExample
         System.out.println("ParserExample1");
         Log.append("ParserExample1");
 
-        ctx.parseSMTLIBString(
-                "(benchmark tst :extrafuns ((x Int) (y Int)) :formula (> x y) :formula (> x 0))",
+        BoolExpr f = ctx.parseSMTLIB2String(
+                "(declare-const x Int) (declare-const y Int) (assert (and (> x y) (> x 0)))",
                 null, null, null, null);
-        for (BoolExpr f : ctx.getSMTLIBFormulas())
-            System.out.println("formula " + f);
+        System.out.println("formula " + f);
 
         @SuppressWarnings("unused")
-        Model m = check(ctx, ctx.mkAnd(ctx.getSMTLIBFormulas()),
-                Status.SATISFIABLE);
+        Model m = check(ctx, f, Status.SATISFIABLE);
     }
 
     // / Demonstrates how to initialize the parser symbol table.
@@ -1482,9 +1464,8 @@ class JavaExample
         FuncDecl b = ctx.mkConstDecl(declNames[1], ctx.mkIntSort());
         FuncDecl[] decls = new FuncDecl[] { a, b };
 
-        ctx.parseSMTLIBString("(benchmark tst :formula (> a b))", null, null,
+        BoolExpr f = ctx.parseSMTLIB2String("(assert (> a b))", null, null,
                 declNames, decls);
-        BoolExpr f = ctx.getSMTLIBFormulas()[0];
         System.out.println("formula: " + f);
         check(ctx, f, Status.SATISFIABLE);
     }
@@ -1502,39 +1483,14 @@ class JavaExample
 
         BoolExpr ca = commAxiom(ctx, g);
 
-        ctx.parseSMTLIBString(
-                "(benchmark tst :formula (forall (x Int) (y Int) (implies (= x y) (= (gg x 0) (gg 0 y)))))",
+        BoolExpr thm = ctx.parseSMTLIB2String(
+                "(assert (forall ((x Int) (y Int)) (=> (= x y) (= (gg x 0) (gg 0 y)))))",
                 null, null, new Symbol[] { ctx.mkSymbol("gg") },
                 new FuncDecl[] { g });
-
-        BoolExpr thm = ctx.getSMTLIBFormulas()[0];
         System.out.println("formula: " + thm);
         prove(ctx, thm, false, ca);
     }
 
-    // / Display the declarations, assumptions and formulas in a SMT-LIB string.
-
-    public void parserExample4(Context ctx)
-    {
-        System.out.println("ParserExample4");
-        Log.append("ParserExample4");
-
-        ctx.parseSMTLIBString(
-                "(benchmark tst :extrafuns ((x Int) (y Int)) :assumption (= x 20) :formula (> x y) :formula (> x 0))",
-                null, null, null, null);
-        for (FuncDecl decl : ctx.getSMTLIBDecls())
-        {
-            System.out.println("Declaration: " + decl);
-        }
-        for (BoolExpr f : ctx.getSMTLIBAssumptions())
-        {
-            System.out.println("Assumption: " + f);
-        }
-        for (BoolExpr f : ctx.getSMTLIBFormulas())
-        {
-            System.out.println("Formula: " + f);
-        }
-    }
 
     // / Demonstrates how to handle parser errors using Z3 error handling
     // support.
@@ -1546,12 +1502,12 @@ class JavaExample
 
         try
         {
-            ctx.parseSMTLIBString(
+            ctx.parseSMTLIB2String(
                     /*
                      * the following string has a parsing error: missing
                      * parenthesis
                      */
-                    "(benchmark tst :extrafuns ((x Int (y Int)) :formula (> x y) :formula (> x 0))",
+                    "(declare-const x Int (declare-const y Int)) (assert (> x y))",
                     null, null, null, null);
         } catch (Z3Exception e)
         {
@@ -2163,13 +2119,14 @@ class JavaExample
 
         FiniteDomainSort s = ctx.mkFiniteDomainSort("S", 10);
         FiniteDomainSort t = ctx.mkFiniteDomainSort("T", 10);
-        Expr s1 = ctx.mkNumeral(1, s);
-        Expr t1 = ctx.mkNumeral(1, t);
+        FiniteDomainNum s1 = (FiniteDomainNum)ctx.mkNumeral(1, s);
+        FiniteDomainNum t1 = (FiniteDomainNum)ctx.mkNumeral(1, t);
         System.out.println(s);
         System.out.println(t);
-        System.out.println(s1);
-        System.out.println(ctx.mkNumeral(2, s));
+        System.out.println(s1);        
         System.out.println(t1);
+        System.out.println(s1.getInt());
+        System.out.println(t1.getInt());
         // But you cannot mix numerals of different sorts
         // even if the size of their domains are the same:
         // System.out.println(ctx.mkEq(s1, t1));
@@ -2254,7 +2211,53 @@ class JavaExample
 
         System.out.println("OK, model: " + s.getModel().toString());        
     }
-    
+
+    public void optimizeExample(Context ctx) 
+    {
+        System.out.println("Opt");
+
+        Optimize opt = ctx.mkOptimize();
+
+        // Set constraints.
+        IntExpr xExp = ctx.mkIntConst("x");
+        IntExpr yExp = ctx.mkIntConst("y");
+
+        opt.Add(ctx.mkEq(ctx.mkAdd(xExp, yExp), ctx.mkInt(10)),
+                ctx.mkGe(xExp, ctx.mkInt(0)),
+                ctx.mkGe(yExp, ctx.mkInt(0)));
+
+        // Set objectives.
+        Optimize.Handle mx = opt.MkMaximize(xExp);
+        Optimize.Handle my = opt.MkMaximize(yExp);
+
+        System.out.println(opt.Check()); 
+        System.out.println(mx);
+        System.out.println(my);
+    }
+
+    public void translationExample() {
+        Context ctx1 = new Context();
+        Context ctx2 = new Context();
+
+        Sort s1 = ctx1.getIntSort();
+        Sort s2 = ctx2.getIntSort();
+        Sort s3 = s1.translate(ctx2);
+
+        System.out.println(s1 == s2);
+        System.out.println(s1.equals(s2));
+        System.out.println(s2.equals(s3));
+        System.out.println(s1.equals(s3));
+
+        Expr e1 = ctx1.mkIntConst("e1");
+        Expr e2 = ctx2.mkIntConst("e1");
+        Expr e3 = e1.translate(ctx2);
+
+        System.out.println(e1 == e2);
+        System.out.println(e1.equals(e2));
+        System.out.println(e2.equals(e3));
+        System.out.println(e1.equals(e3));
+    }
+
     public static void main(String[] args)
     {
         JavaExample p = new JavaExample();
@@ -2267,6 +2270,8 @@ class JavaExample
             System.out.println(Version.getMajor());
             System.out.print("Z3 Full Version: ");
             System.out.println(Version.getString());
+            System.out.print("Z3 Full Version String: ");
+            System.out.println(Version.getFullVersion());
 
             p.simpleExample();
 
@@ -2274,6 +2279,8 @@ class JavaExample
                 HashMap<String, String> cfg = new HashMap<String, String>();
                 cfg.put("model", "true");
                 Context ctx = new Context(cfg);
+        
+                p.optimizeExample(ctx);
                 p.basicTests(ctx);
                 p.castingTest(ctx);
                 p.sudokuExample(ctx);
@@ -2290,7 +2297,6 @@ class JavaExample
                 p.bitvectorExample2(ctx);
                 p.parserExample1(ctx);
                 p.parserExample2(ctx);
-                p.parserExample4(ctx);
                 p.parserExample5(ctx);
                 p.iteExample(ctx);
                 p.evalExample1(ctx);
@@ -2327,7 +2333,9 @@ class JavaExample
                 Context ctx = new Context(cfg);
                 p.quantifierExample3(ctx);
                 p.quantifierExample4(ctx);
-            }            
+            }
+
+            p.translationExample();
 
             Log.close();
             if (Log.isOpen())

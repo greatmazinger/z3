@@ -16,12 +16,12 @@ Author:
 Notes:
 
 --*/
-#include"cmd_context.h"
-#include"model_evaluator.h"
-#include"parametric_cmd.h"
-#include"scoped_timer.h"
-#include"scoped_ctrl_c.h"
-#include"cancel_eh.h"
+#include "cmd_context/cmd_context.h"
+#include "model/model_evaluator.h"
+#include "cmd_context/parametric_cmd.h"
+#include "util/scoped_timer.h"
+#include "util/scoped_ctrl_c.h"
+#include "util/cancel_eh.h"
 
 class eval_cmd : public parametric_cmd {
     expr *                   m_target;
@@ -38,6 +38,7 @@ public:
     virtual void init_pdescrs(cmd_context & ctx, param_descrs & p) {
         model_evaluator::get_param_descrs(p);
         insert_timeout(p);
+        p.insert("model_index", CPK_UINT, "(default: 0) index of model from box optimization objective");
     }
 
     virtual void prepare(cmd_context & ctx) { 
@@ -57,17 +58,27 @@ public:
     virtual void execute(cmd_context & ctx) {
         if (!ctx.is_model_available())
             throw cmd_exception("model is not available");
+        if (!m_target)
+            throw cmd_exception("no arguments passed to eval");
         model_ref md;
+        unsigned index = m_params.get_uint("model_index", 0);
         check_sat_result * last_result = ctx.get_check_sat_result();
         SASSERT(last_result);
-        last_result->get_model(md);
+        if (index == 0 || !ctx.get_opt()) {
+            last_result->get_model(md);
+        }
+        else {
+            ctx.get_opt()->get_box_model(md, index);
+        }
         expr_ref r(ctx.m());
         unsigned timeout = m_params.get_uint("timeout", UINT_MAX);
+        unsigned rlimit  = m_params.get_uint("rlimit", 0);
         model_evaluator ev(*(md.get()), m_params);
-        cancel_eh<model_evaluator> eh(ev);
+        cancel_eh<reslimit> eh(ctx.m().limit());
         { 
             scoped_ctrl_c ctrlc(eh);
             scoped_timer timer(timeout, &eh);
+            scoped_rlimit _rlimit(ctx.m().limit(), rlimit);
             cmd_context::scoped_watch sw(ctx);
             try {
                 ev(m_target, r);

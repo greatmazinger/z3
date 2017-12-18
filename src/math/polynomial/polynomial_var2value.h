@@ -16,11 +16,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _POLYNOMIAL_VAR2VALUE_H_
-#define _POLYNOMIAL_VAR2VALUE_H_
+#ifndef POLYNOMIAL_VAR2VALUE_H_
+#define POLYNOMIAL_VAR2VALUE_H_
 
-#include"polynomial.h"
-#include"scoped_numeral_vector.h"
+#include "math/polynomial/polynomial.h"
+#include "util/scoped_numeral_vector.h"
 
 namespace polynomial {
 

@@ -18,19 +18,18 @@ Revision History:
 --*/
 
 #include <sstream>
-#include "model.h"
-#include "pdr_util.h"
-#include "pdr_prop_solver.h"
-#include "ast_smt2_pp.h"
-#include "dl_util.h"
-#include "model_pp.h"
-#include "smt_params.h"
-#include "datatype_decl_plugin.h"
-#include "bv_decl_plugin.h"
-#include "pdr_farkas_learner.h"
-#include "ast_smt2_pp.h"
-#include "expr_replacer.h"
-#include "fixedpoint_params.hpp"
+#include "model/model.h"
+#include "muz/pdr/pdr_util.h"
+#include "muz/pdr/pdr_prop_solver.h"
+#include "ast/ast_smt2_pp.h"
+#include "muz/base/dl_util.h"
+#include "model/model_pp.h"
+#include "smt/params/smt_params.h"
+#include "ast/datatype_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
+#include "muz/pdr/pdr_farkas_learner.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/rewriter/expr_replacer.h"
 
 //
 // Auxiliary structure to introduce propositional names for assumptions that are not
@@ -77,7 +76,7 @@ namespace pdr {
         }
 
         void mk_safe(expr_ref_vector& conjs) {
-            qe::flatten_and(conjs);
+            flatten_and(conjs);
             expand_literals(conjs);
             for (unsigned i = 0; i < conjs.size(); ++i) {
                 expr * lit = conjs[i].get();
@@ -226,12 +225,11 @@ namespace pdr {
     };
 
 
-    prop_solver::prop_solver(manager& pm, fixedpoint_params const& p, symbol const& name) :
+    prop_solver::prop_solver(manager& pm, symbol const& name) :
         m_fparams(pm.get_fparams()),
         m(pm.get_manager()),
         m_pm(pm),
         m_name(name),
-        m_try_minimize_core(p.try_minimize_core()),
         m_ctx(pm.mk_fresh()),
         m_pos_level_atoms(m),
         m_neg_level_atoms(m),

@@ -15,12 +15,12 @@ Author:
 Notes:
 
 --*/
-#ifndef _TACTIC_CMDS_H_
-#define _TACTIC_CMDS_H_
+#ifndef TACTIC_CMDS_H_
+#define TACTIC_CMDS_H_
 
-#include"ast.h"
-#include"cmd_context_types.h"
-#include"ref.h"
+#include "ast/ast.h"
+#include "util/cmd_context_types.h"
+#include "util/ref.h"
 
 class tactic;
 class probe;

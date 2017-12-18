@@ -16,12 +16,12 @@ Revision History:
 
 --*/
 #include<iostream>
-#include"z3.h"
-#include"api_log_macros.h"
-#include"api_context.h"
-#include"api_ast_vector.h"
-#include"ast_translation.h"
-#include"ast_smt2_pp.h"
+#include "api/z3.h"
+#include "api/api_log_macros.h"
+#include "api/api_context.h"
+#include "api/api_ast_vector.h"
+#include "ast/ast_translation.h"
+#include "ast/ast_smt2_pp.h"
 
 extern "C" {
 
@@ -29,7 +29,7 @@ extern "C" {
         Z3_TRY;
         LOG_Z3_mk_ast_vector(c);
         RESET_ERROR_CODE();
-        Z3_ast_vector_ref * v = alloc(Z3_ast_vector_ref, mk_c(c)->m());
+        Z3_ast_vector_ref * v = alloc(Z3_ast_vector_ref, *mk_c(c), mk_c(c)->m());
         mk_c(c)->save_object(v);
         Z3_ast_vector r       = of_ast_vector(v);
         RETURN_Z3(r);
@@ -111,7 +111,7 @@ extern "C" {
             RETURN_Z3(0);
         }
         ast_translation translator(mk_c(c)->m(), mk_c(t)->m()); 
-        Z3_ast_vector_ref * new_v = alloc(Z3_ast_vector_ref, mk_c(t)->m());
+        Z3_ast_vector_ref * new_v = alloc(Z3_ast_vector_ref, *mk_c(t), mk_c(t)->m());
         mk_c(t)->save_object(new_v);
         unsigned sz = to_ast_vector_ref(v).size();
         for (unsigned i = 0; i < sz; i++) {

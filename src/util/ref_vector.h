@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _REF_VECTOR_H_
-#define _REF_VECTOR_H_
+#ifndef REF_VECTOR_H_
+#define REF_VECTOR_H_
 
-#include"vector.h"
-#include"obj_ref.h"
+#include "util/vector.h"
+#include "util/obj_ref.h"
 
 /**
    \brief Vector of smart pointers.
@@ -45,6 +45,10 @@ public:
     typedef T * data;
 
     ref_vector_core(Ref const & r = Ref()):Ref(r) {}
+
+    ref_vector_core(ref_vector_core && other) :
+        Ref(std::move(other)),
+        m_nodes(std::move(other.m_nodes)) {}
     
     ~ref_vector_core() {
         dec_range_ref(m_nodes.begin(), m_nodes.end());
@@ -63,7 +67,7 @@ public:
     void resize(unsigned sz) {
         if (sz < m_nodes.size())
             dec_range_ref(m_nodes.begin() + sz, m_nodes.end());
-        m_nodes.resize(sz, 0);
+        m_nodes.resize(sz);
     }
 
     void resize(unsigned sz, T * d) {
@@ -80,7 +84,7 @@ public:
     void reserve(unsigned sz) {
         if (sz <= m_nodes.size())
             return;
-        m_nodes.resize(sz, 0);
+        m_nodes.resize(sz);
     }
 
     void shrink(unsigned sz) {
@@ -89,9 +93,10 @@ public:
         m_nodes.shrink(sz);
     }
 
-    void push_back(T * n) {
+    ref_vector_core& push_back(T * n) {
         inc_ref(n);
         m_nodes.push_back(n);
+        return *this;
     }
 
     void pop_back() {
@@ -205,6 +210,8 @@ public:
         super(ref_manager_wrapper<T, TManager>(other.m_manager)) {
         this->append(other);
     }
+
+    ref_vector(ref_vector && other) : super(std::move(other)) {}
 
     ref_vector(TManager & m, unsigned sz, T * const * data):
         super(ref_manager_wrapper<T, TManager>(m)) {
@@ -351,4 +358,4 @@ struct ref_vector_ptr_eq {
 };
 
 
-#endif /* _REF_VECTOR_H_ */
+#endif /* REF_VECTOR_H_ */

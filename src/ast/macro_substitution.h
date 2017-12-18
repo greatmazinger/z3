@@ -18,10 +18,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _MACRO_SUBSTITUTION_H_
-#define _MACRO_SUBSTITUTION_H_
+#ifndef MACRO_SUBSTITUTION_H_
+#define MACRO_SUBSTITUTION_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 class macro_substitution {
     ast_manager &                                      m_manager;

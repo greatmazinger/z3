@@ -17,19 +17,22 @@ Revision History:
 
 --*/
 
-#ifndef _DL_RULE_H_
-#define _DL_RULE_H_
+#ifndef DL_RULE_H_
+#define DL_RULE_H_
 
-#include"ast.h"
-#include"dl_costs.h"
-#include"dl_util.h"
-#include"used_vars.h"
-#include"proof_converter.h"
-#include"model_converter.h"
-#include"ast_counter.h"
-#include"rewriter.h"
-#include"hnf.h"
-#include"qe_lite.h"
+#include "ast/ast.h"
+#include "muz/base/dl_costs.h"
+#include "muz/base/dl_util.h"
+#include "ast/used_vars.h"
+#include "tactic/proof_converter.h"
+#include "tactic/model_converter.h"
+#include "ast/rewriter/ast_counter.h"
+#include "ast/rewriter/rewriter.h"
+#include "muz/base/hnf.h"
+#include "qe/qe_lite.h"
+#include "ast/rewriter/var_subst.h"
+#include "ast/datatype_decl_plugin.h"
+#include "ast/rewriter/label_rewriter.h"
 
 namespace datalog {
 
@@ -42,6 +45,56 @@ namespace datalog {
     typedef obj_ref<rule, rule_manager> rule_ref;
     typedef ref_vector<rule, rule_manager> rule_ref_vector;
     typedef ptr_vector<rule> rule_vector;
+
+
+    struct uninterpreted_function_finder_proc {
+        ast_manager& m;
+        datatype_util m_dt;
+        dl_decl_util  m_dl;
+        bool m_found;
+        func_decl* m_func;
+        uninterpreted_function_finder_proc(ast_manager& m): 
+            m(m), m_dt(m), m_dl(m), m_found(false), m_func(0) {}
+        void operator()(var * n) { }
+        void operator()(quantifier * n) { }
+        void operator()(app * n) {
+            if (is_uninterp(n) && !m_dl.is_rule_sort(n->get_decl()->get_range())) {
+                m_found = true;
+                m_func = n->get_decl();
+            }
+            else if (m_dt.is_accessor(n)) {
+                sort* s = m.get_sort(n->get_arg(0));
+                SASSERT(m_dt.is_datatype(s));
+                if (m_dt.get_datatype_constructors(s)->size() > 1) {
+                    m_found = true;
+                    m_func = n->get_decl();
+                }
+            }
+        }
+        void reset() { m_found = false; m_func = 0; }
+
+        bool found(func_decl*& f) const { f = m_func; return m_found; }
+    };
+
+    struct quantifier_finder_proc {
+        bool m_exist;
+        bool m_univ;
+        quantifier_finder_proc() : m_exist(false), m_univ(false) {}
+        void operator()(var * n) { }
+        void operator()(quantifier * n) {
+            if (n->is_forall()) {
+                m_univ = true;
+            }
+            else {
+                SASSERT(n->is_exists());
+                m_exist = true;
+            }
+        }
+        void operator()(app * n) { }
+        void reset() { m_exist = m_univ = false; }
+    };
+
+
     /**
        \brief Manager for the \c rule class
 
@@ -50,32 +103,22 @@ namespace datalog {
     */
     class rule_manager
     {
-        class remove_label_cfg : public default_rewriter_cfg {
-            family_id m_label_fid;
-        public:        
-            remove_label_cfg(ast_manager& m): m_label_fid(m.get_label_family_id()) {}
-            virtual ~remove_label_cfg();
-            
-            br_status reduce_app(func_decl * f, unsigned num, expr * const * args, expr_ref & result, 
-                                 proof_ref & result_pr);
-        };
-    
         ast_manager&         m;
         context&             m_ctx;
         rule_counter         m_counter;
         used_vars            m_used;
-        ptr_vector<sort>     m_vars;
         var_idx_set          m_var_idx;
-        ptr_vector<expr>     m_todo;
-        ast_mark             m_mark;
+        expr_free_vars       m_free_vars;
         app_ref_vector       m_body;
         app_ref              m_head;
         expr_ref_vector      m_args;
         svector<bool>        m_neg;
         hnf                  m_hnf;
         qe_lite              m_qe;
-        remove_label_cfg               m_cfg;
-        rewriter_tpl<remove_label_cfg> m_rwr;
+        label_rewriter       m_rwr;
+        mutable uninterpreted_function_finder_proc m_ufproc;
+        mutable quantifier_finder_proc m_qproc;
+        mutable expr_sparse_mark       m_visited;
 
 
         // only the context can create a rule_manager
@@ -143,7 +186,7 @@ namespace datalog {
 
         void accumulate_vars(expr* pred);
 
-        ptr_vector<sort>& get_var_sorts() { return m_vars; }
+        // ptr_vector<sort>& get_var_sorts() { return m_vars; }
 
         var_idx_set&      get_var_idx() { return m_var_idx; }
 
@@ -213,10 +256,17 @@ namespace datalog {
         */
         bool is_fact(app * head) const;
 
-
         static bool is_forall(ast_manager& m, expr* e, quantifier*& q);
 
         rule_counter& get_counter() { return m_counter; }
+
+        void to_formula(rule const& r, expr_ref& result);
+
+        std::ostream& display_smt2(rule const& r, std::ostream & out);
+
+        bool has_uninterpreted_non_predicates(rule const& r, func_decl*& f) const;
+        void has_quantifiers(rule const& r, bool& existential, bool& universal) const;
+        bool has_quantifiers(rule const& r) const;
 
     };
 
@@ -248,7 +298,7 @@ namespace datalog {
         
         static unsigned get_obj_size(unsigned n) { return sizeof(rule) + n * sizeof(app *); }
 
-        rule() : m_ref_cnt(0) {}
+        rule() : m_ref_cnt(0), m_name(symbol::null) {}
         ~rule() {}
 
         void deallocate(ast_manager & m);
@@ -293,9 +343,6 @@ namespace datalog {
         */
         bool is_in_tail(const func_decl * p, bool only_positive=false) const;
 
-        bool has_uninterpreted_non_predicates(ast_manager& m, func_decl*& f) const;
-        void has_quantifiers(bool& existential, bool& universal) const;
-        bool has_quantifiers() const;
         bool has_negation() const;
 
         /**
@@ -306,13 +353,14 @@ namespace datalog {
 
         void get_vars(ast_manager& m, ptr_vector<sort>& sorts) const;
 
-        void to_formula(expr_ref& result) const;
-
         void display(context & ctx, std::ostream & out) const;
 
-        std::ostream& display_smt2(ast_manager& m, std::ostream & out) const;
+        /**
+           \brief Return the name(s) associated with this rule. Plural for preprocessed (e.g. obtained by inlining) rules.
 
-        symbol const& name() const { return m_name; }
+           This possibly returns a ";"-separated list of names.
+        */
+        symbol const& name() const { return m_name; } ;
 
         unsigned hash() const;
 
@@ -327,5 +375,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_RULE_H_ */
+#endif /* DL_RULE_H_ */
 

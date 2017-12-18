@@ -16,16 +16,17 @@ Author:
 Notes:
 
 --*/
-#ifndef _SLS_ENGINE_H_
-#define _SLS_ENGINE_H_
+#ifndef SLS_ENGINE_H_
+#define SLS_ENGINE_H_
 
-#include"stopwatch.h"
-#include"lbool.h"
-#include"model_converter.h"
-#include"goal.h"
+#include "util/stopwatch.h"
+#include "util/lbool.h"
+#include "tactic/model_converter.h"
+#include "tactic/goal.h"
 
-#include"sls_tracker.h"
-#include"sls_evaluator.h"
+#include "tactic/sls/sls_tracker.h"
+#include "tactic/sls/sls_evaluator.h"
+#include "util/statistics.h"
 
 class sls_engine {
 public:
@@ -63,7 +64,6 @@ protected:
     powers          m_powers;
     mpz             m_zero, m_one, m_two;
     bool            m_produce_models;
-    volatile bool   m_cancel;
     bv_util         m_bv_util;
     sls_tracker     m_tracker;
     sls_evaluator   m_evaluator;
@@ -92,15 +92,13 @@ public:
 
     ast_manager & m() const { return m_manager; }
 
-    void set_cancel(bool f) { m_cancel = f; }
-    void cancel() { set_cancel(true); }
-    void reset_cancel() { set_cancel(false); }
 
     void updt_params(params_ref const & _p);
 
     void assert_expr(expr * e) { m_assertions.push_back(e); }
 
-    stats const & get_stats(void) { return m_stats; }
+    // stats const & get_stats(void) { return m_stats; }
+    void collect_statistics(statistics & st) const;
     void reset_statistics(void) { m_stats.reset(); }    
 
     bool full_eval(model & mdl);

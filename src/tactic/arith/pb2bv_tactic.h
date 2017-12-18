@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _PB2BV_TACTIC_
-#define _PB2BV_TACTIC_
+#ifndef PB2BV_TACTIC_H_
+#define PB2BV_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

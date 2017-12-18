@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_CASE_SPLIT_QUEUE_H_
-#define _SMT_CASE_SPLIT_QUEUE_H_
+#ifndef SMT_CASE_SPLIT_QUEUE_H_
+#define SMT_CASE_SPLIT_QUEUE_H_
 
-#include"smt_types.h"
-#include"heap.h"
-#include"smt_params.h"
+#include "smt/smt_types.h"
+#include "util/heap.h"
+#include "smt/params/smt_params.h"
 
 namespace smt {
     class context;
@@ -46,10 +46,13 @@ namespace smt {
         virtual void next_case_split(bool_var & next, lbool & phase) = 0;
         virtual void display(std::ostream & out) = 0;
         virtual ~case_split_queue() {}
+
+        // theory-aware branching hint
+        virtual void add_theory_aware_branching_info(bool_var v, double priority, lbool phase) {}
     };
 
     case_split_queue * mk_case_split_queue(context & ctx, smt_params & p);
 };
 
-#endif /* _SMT_CASE_SPLIT_QUEUE_H_ */
+#endif /* SMT_CASE_SPLIT_QUEUE_H_ */
 

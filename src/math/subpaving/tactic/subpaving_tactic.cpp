@@ -16,16 +16,16 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"simplify_tactic.h"
-#include"expr2subpaving.h"
-#include"expr2var.h"
-#include"arith_decl_plugin.h"
-#include"ast_smt2_pp.h"
-#include"hwf.h"
-#include"mpff.h"
-#include"mpfx.h"
-#include"f2n.h"
+#include "tactic/tactical.h"
+#include "tactic/core/simplify_tactic.h"
+#include "math/subpaving/tactic/expr2subpaving.h"
+#include "ast/expr2var.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/ast_smt2_pp.h"
+#include "util/hwf.h"
+#include "util/mpff.h"
+#include "util/mpfx.h"
+#include "util/f2n.h"
 
 class subpaving_tactic : public tactic {
 
@@ -35,6 +35,8 @@ class subpaving_tactic : public tactic {
         display_var_proc(expr2var & e2v):m_inv(e2v.m()) {
             e2v.mk_inv(m_inv);
         }
+
+        virtual ~display_var_proc() {}
         
         ast_manager & m() const { return m_inv.get_manager(); }
         
@@ -103,11 +105,11 @@ class subpaving_tactic : public tactic {
             if (m_kind != new_kind) {
                 m_kind = new_kind;
                 switch (m_kind) {
-                case MPQ:  m_ctx = subpaving::mk_mpq_context(m_qm); break;
-                case MPF:  m_ctx = subpaving::mk_mpf_context(m_fm); break;
-                case HWF:  m_ctx = subpaving::mk_hwf_context(m_hm, m_qm); break;
-                case MPFF: m_ctx = subpaving::mk_mpff_context(m_ffm, m_qm); break;
-                case MPFX: m_ctx = subpaving::mk_mpfx_context(m_fxm, m_qm); break;
+                case MPQ:  m_ctx = subpaving::mk_mpq_context(m().limit(), m_qm); break;
+                case MPF:  m_ctx = subpaving::mk_mpf_context(m().limit(), m_fm); break;
+                case HWF:  m_ctx = subpaving::mk_hwf_context(m().limit(), m_hm, m_qm); break;
+                case MPFF: m_ctx = subpaving::mk_mpff_context(m().limit(), m_ffm, m_qm); break;
+                case MPFX: m_ctx = subpaving::mk_mpfx_context(m().limit(), m_fxm, m_qm); break;
                 default: UNREACHABLE(); break;
                 }
                 m_e2s = alloc(expr2subpaving, m_manager, *m_ctx, &m_e2v);
@@ -121,11 +123,6 @@ class subpaving_tactic : public tactic {
 
         void reset_statistics() {
             m_ctx->reset_statistics();
-        }
-
-        void set_cancel(bool f) {
-            m_e2s->set_cancel(f);
-            m_ctx->set_cancel(f);
         }
 
         subpaving::ineq * mk_ineq(expr * a) {
@@ -266,24 +263,10 @@ public:
     
     virtual void cleanup() {
         ast_manager & m = m_imp->m();
-        imp * d = m_imp;
-        #pragma omp critical (tactic_cancel)
-        {
-            d = m_imp;
-        }
-        dealloc(d);
-        d = alloc(imp, m, m_params);
-        #pragma omp critical (tactic_cancel) 
-        {
-            m_imp = d;
-        }
+        dealloc(m_imp);
+        m_imp = alloc(imp, m, m_params);
     }
 
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 

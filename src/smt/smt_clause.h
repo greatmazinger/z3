@@ -16,14 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_CLAUSE_H_
-#define _SMT_CLAUSE_H_
+#ifndef SMT_CLAUSE_H_
+#define SMT_CLAUSE_H_
 
-#include"ast.h"
-#include"smt_literal.h"
-#include"tptr.h"
-#include"obj_hashtable.h"
-#include"smt_justification.h"
+#include "ast/ast.h"
+#include "smt/smt_literal.h"
+#include "util/tptr.h"
+#include "util/obj_hashtable.h"
+#include "smt/smt_justification.h"
 
 namespace smt {
 
@@ -267,5 +267,5 @@ namespace smt {
     typedef obj_hashtable<clause> clause_set;
 };
 
-#endif /* _SMT_CLAUSE_H_ */
+#endif /* SMT_CLAUSE_H_ */
 

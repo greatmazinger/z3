@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _OBJ_HASHTABLE_H_
-#define _OBJ_HASHTABLE_H_
+#ifndef OBJ_HASHTABLE_H_
+#define OBJ_HASHTABLE_H_
 
-#include"hash.h"
-#include"hashtable.h"
+#include "util/hash.h"
+#include "util/hashtable.h"
 
 
 /**
@@ -51,6 +51,7 @@ class obj_hashtable : public core_hashtable<obj_hash_entry<T>, obj_ptr_hash<T>, 
 public:
     obj_hashtable(unsigned initial_capacity = DEFAULT_HASHTABLE_INITIAL_CAPACITY):
         core_hashtable<obj_hash_entry<T>, obj_ptr_hash<T>, ptr_eq<T> >(initial_capacity) {}
+
 };
 
 template<typename Key, typename Value>
@@ -68,7 +69,12 @@ public:
             m_key(k),
             m_value(v) {
         }
+        key_data(Key * k, Value && v) :
+            m_key(k),
+            m_value(std::move(v)) {
+        }
         Value const & get_value() const { return m_value; }
+        Key & get_key () const { return *m_key; }
         unsigned hash() const { return m_key->hash(); }
         bool operator==(key_data const & other) const { return m_key == other.m_key; }
     };
@@ -84,7 +90,7 @@ public:
         bool is_used() const { return m_data.m_key != reinterpret_cast<Key *>(0) && m_data.m_key != reinterpret_cast<Key *>(1); }
         key_data const & get_data() const { return m_data; }
         key_data & get_data() { return m_data; }
-        void set_data(key_data const & d) { m_data = d; }
+        void set_data(key_data && d) { m_data = std::move(d); }
         void set_hash(unsigned h) { SASSERT(h == m_data.hash()); }
         void mark_as_deleted() { m_data.m_key = reinterpret_cast<Key *>(1); }
         void mark_as_free() { m_data.m_key = 0; }
@@ -99,6 +105,8 @@ public:
         m_table(DEFAULT_HASHTABLE_INITIAL_CAPACITY) {}
     
     typedef typename table::iterator iterator;
+    typedef typename table::data data;
+    typedef typename table::entry entry;
     typedef Key    key;
     typedef Value  value;
 
@@ -130,8 +138,12 @@ public:
         return m_table.end();
     }
     
-    void insert(Key * k, Value const & v) {
+    void insert(Key * const k, Value const & v) {
         m_table.insert(key_data(k, v));
+    }
+
+    void insert(Key * const k, Value && v) {
+        m_table.insert(key_data(k, std::move(v)));
     }
     
     key_data const & insert_if_not_there(Key * k, Value const & v) {
@@ -146,7 +158,7 @@ public:
         return m_table.find_core(key_data(k));
     }
 
-    bool find(Key * k, Value & v) const {
+    bool find(Key * const k, Value & v) const {
         obj_map_entry * e = find_core(k);
         if (e) {
             v = e->get_data().m_value;
@@ -223,5 +235,5 @@ void erase_dealloc_value(obj_map<Key, Value*> & m, Key * k) {
     }
 }
 
-#endif /* _OBJ_HASHTABLE_H_ */
+#endif /* OBJ_HASHTABLE_H_ */
 

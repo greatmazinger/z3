@@ -16,18 +16,19 @@ Author:
 Revision History:
 
 --*/
-#ifndef _THEORY_ARITH_PARAMS_H_
-#define _THEORY_ARITH_PARAMS_H_
+#ifndef THEORY_ARITH_PARAMS_H_
+#define THEORY_ARITH_PARAMS_H_
 
 #include<limits.h>
-#include"params.h"
+#include "util/params.h"
 
 enum arith_solver_id {
     AS_NO_ARITH,
     AS_DIFF_LOGIC,
     AS_ARITH,
     AS_DENSE_DIFF_LOGIC,
-    AS_UTVPI
+    AS_UTVPI,
+    AS_OPTINF
 };
 
 enum bound_prop_mode {
@@ -48,6 +49,8 @@ enum arith_pivot_strategy {
 };
 
 struct theory_arith_params {
+    bool                    m_arith_eq2ineq;
+    bool                    m_arith_process_all_eqs;
     arith_solver_id         m_arith_mode;
     bool                    m_arith_auto_config_simplex; //!< force simplex solver in auto_config
     unsigned                m_arith_blands_rule_threshold;
@@ -107,6 +110,8 @@ struct theory_arith_params {
 
 
     theory_arith_params(params_ref const & p = params_ref()):
+        m_arith_eq2ineq(false),
+        m_arith_process_all_eqs(false),
         m_arith_mode(AS_ARITH),
         m_arith_auto_config_simplex(false),
         m_arith_blands_rule_threshold(1000),
@@ -155,7 +160,9 @@ struct theory_arith_params {
     }
 
     void updt_params(params_ref const & p);
+
+    void display(std::ostream & out) const;
 };
 
-#endif /* _THEORY_ARITH_PARAMS_H_ */
+#endif /* THEORY_ARITH_PARAMS_H_ */
 

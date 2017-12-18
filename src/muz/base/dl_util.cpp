@@ -23,14 +23,14 @@ Revision History:
 #ifdef _WINDOWS
 #include <windows.h>
 #endif
-#include"ast_pp.h"
-#include"bool_rewriter.h"
-#include"for_each_expr.h"
-#include"scoped_proof.h"
-#include"dl_context.h"
-#include"dl_rule.h"
-#include"dl_util.h"
-#include"stopwatch.h"
+#include "ast/ast_pp.h"
+#include "ast/rewriter/bool_rewriter.h"
+#include "ast/for_each_expr.h"
+#include "ast/scoped_proof.h"
+#include "muz/base/dl_context.h"
+#include "muz/base/dl_rule.h"
+#include "muz/base/dl_util.h"
+#include "util/stopwatch.h"
 
 namespace datalog {
 
@@ -56,9 +56,9 @@ namespace datalog {
 
 
     bool contains_var(expr * trm, unsigned var_idx) {
-        ptr_vector<sort> vars;
-        ::get_free_vars(trm, vars);
-        return var_idx < vars.size() && vars[var_idx] != 0;
+        expr_free_vars fv;
+        fv(trm);
+        return fv.contains(var_idx);
     }
     
     unsigned count_variable_arguments(app * pred)
@@ -256,12 +256,12 @@ namespace datalog {
     }
 
     
-    void rule_counter::count_rule_vars(ast_manager & m, const rule * r, int coef) {
+    void rule_counter::count_rule_vars(const rule * r, int coef) {
         reset();
-        count_vars(m, r->get_head(), 1);
+        count_vars(r->get_head(), 1);
         unsigned n = r->get_tail_size();
         for (unsigned i = 0; i < n; i++) {
-            count_vars(m, r->get_tail(i), coef);
+            count_vars(r->get_tail(i), coef);
         }
     }
 
@@ -277,16 +277,21 @@ namespace datalog {
         return get_max_var(has_var);
     }
 
-    void del_rule(horn_subsume_model_converter* mc, rule& r) {
+    void del_rule(horn_subsume_model_converter* mc, rule& r, bool unreachable) {
         if (mc) {
             ast_manager& m = mc->get_manager();
             expr_ref_vector body(m);
-            for (unsigned i = 0; i < r.get_tail_size(); ++i) {
-                if (r.is_neg_tail(i)) {
-                    body.push_back(m.mk_not(r.get_tail(i)));
-                }
-                else {
-                    body.push_back(r.get_tail(i));
+            if (unreachable) {
+                body.push_back(m.mk_false());
+            }
+            else {
+                for (unsigned i = 0; i < r.get_tail_size(); ++i) {
+                    if (r.is_neg_tail(i)) {
+                        body.push_back(m.mk_not(r.get_tail(i)));
+                    }
+                    else {
+                        body.push_back(r.get_tail(i));
+                    }
                 }
             }
             TRACE("dl_dr", 
@@ -300,14 +305,15 @@ namespace datalog {
     }
 
 
-    void resolve_rule(replace_proof_converter* pc, rule const& r1, rule const& r2, unsigned idx, 
+    void resolve_rule(rule_manager& rm,
+                      replace_proof_converter* pc, rule const& r1, rule const& r2, unsigned idx, 
                       expr_ref_vector const& s1, expr_ref_vector const& s2, rule const& res) {
         if (!pc) return;
         ast_manager& m = s1.get_manager();
         expr_ref fml1(m), fml2(m), fml3(m);
-        r1.to_formula(fml1);
-        r2.to_formula(fml2);
-        res.to_formula(fml3);
+        rm.to_formula(r1, fml1);
+        rm.to_formula(r2, fml2);
+        rm.to_formula(res, fml3);
         vector<expr_ref_vector> substs;
         svector<std::pair<unsigned, unsigned> > positions;
         substs.push_back(s1);
@@ -337,7 +343,7 @@ namespace datalog {
         pc->insert(pr);
     }
 
-    void resolve_rule(rule const& r1, rule const& r2, unsigned idx, 
+    void resolve_rule(rule_manager& rm, rule const& r1, rule const& r2, unsigned idx, 
                       expr_ref_vector const& s1, expr_ref_vector const& s2, rule& res) {
         if (!r1.get_proof()) {
             return;
@@ -345,7 +351,7 @@ namespace datalog {
         SASSERT(r2.get_proof());
         ast_manager& m = s1.get_manager();
         expr_ref fml(m);
-        res.to_formula(fml);
+        rm.to_formula(res, fml);
         vector<expr_ref_vector> substs;
         svector<std::pair<unsigned, unsigned> > positions;
         substs.push_back(s1);

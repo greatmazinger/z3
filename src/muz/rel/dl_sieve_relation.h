@@ -17,11 +17,11 @@ Revision History:
 
 --*/
 
-#ifndef _DL_SIEVE_RELATION_H_
-#define _DL_SIEVE_RELATION_H_
+#ifndef DL_SIEVE_RELATION_H_
+#define DL_SIEVE_RELATION_H_
 
-#include "dl_context.h"
-#include "dl_relation_manager.h"
+#include "muz/base/dl_context.h"
+#include "muz/rel/dl_relation_manager.h"
 
 namespace datalog {
 
@@ -104,8 +104,7 @@ namespace datalog {
         sieve_relation * mk_empty(const relation_signature & s, relation_plugin & inner_plugin);
 
         virtual relation_base * mk_full(func_decl* p, const relation_signature & s);
-        sieve_relation * mk_full(func_decl* p, const relation_signature & s, relation_plugin & inner_plugin);
-
+        sieve_relation * full(func_decl* p, const relation_signature & s, relation_plugin & inner_plugin);
 
         sieve_relation * mk_from_inner(const relation_signature & s, const bool * inner_columns, 
             relation_base * inner_rel);
@@ -194,5 +193,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_SIEVE_RELATION_H_ */
+#endif /* DL_SIEVE_RELATION_H_ */
 

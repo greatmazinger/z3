@@ -22,12 +22,12 @@ Revision History:
     "On Solving Universally Quantified Horn Clauses"    
 
 --*/
-#ifndef _DL_MK_QUANTIFIER_ABSTRACTION_H_
-#define _DL_MK_QUANTIFIER_ABSTRACTION_H_
+#ifndef DL_MK_QUANTIFIER_ABSTRACTION_H_
+#define DL_MK_QUANTIFIER_ABSTRACTION_H_
 
 
-#include"dl_rule_transformer.h"
-#include"array_decl_plugin.h"
+#include "muz/base/dl_rule_transformer.h"
+#include "ast/array_decl_plugin.h"
 
 namespace datalog {
 
@@ -60,5 +60,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_MK_QUANTIFIER_ABSTRACTION_H_ */
+#endif /* DL_MK_QUANTIFIER_ABSTRACTION_H_ */
 

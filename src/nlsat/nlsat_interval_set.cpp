@@ -16,9 +16,9 @@ Author:
 Revision History:
 
 --*/
-#include"nlsat_interval_set.h"
-#include"algebraic_numbers.h"
-#include"buffer.h"
+#include "nlsat/nlsat_interval_set.h"
+#include "math/polynomial/algebraic_numbers.h"
+#include "util/buffer.h"
 
 namespace nlsat {
 
@@ -102,14 +102,14 @@ namespace nlsat {
     
     // Check if the intervals are valid, ordered, and are disjoint.
     bool check_interval_set(anum_manager & am, unsigned sz, interval const * ints) {
-        for (unsigned i = 0; i < sz; i++) {
-            interval const & curr = ints[i];
-            SASSERT(check_interval(am, curr));
-            if (i < sz - 1) {
-                interval const & next = ints[i+1];
-                SASSERT(check_no_overlap(am, curr, next));
-            }
-        }
+        DEBUG_CODE(
+            for (unsigned i = 0; i < sz; i++) {
+                interval const & curr = ints[i];
+                SASSERT(check_interval(am, curr));
+                if (i < sz - 1) {
+                    SASSERT(check_no_overlap(am, curr, ints[i+1]));
+                }
+            });
         return true;
     }
 
@@ -672,14 +672,14 @@ namespace nlsat {
         return new_set;
     }
 
-    void interval_set_manager::peek_in_complement(interval_set const * s, anum & w, bool randomize) {
+    void interval_set_manager::peek_in_complement(interval_set const * s, bool is_int, anum & w, bool randomize) {
         SASSERT(!is_full(s));
         if (s == 0) {
             if (randomize) {
                 int num = m_rand() % 2 == 0 ? 1 : -1;
 #define MAX_RANDOM_DEN_K 4
                 int den_k = (m_rand() % MAX_RANDOM_DEN_K);
-                int den   = 1 << den_k;
+                int den   = is_int ? 1 : (1 << den_k);
                 scoped_mpq _w(m_am.qm());
                 m_am.qm().set(_w, num, den);
                 m_am.set(w, _w);

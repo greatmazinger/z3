@@ -23,9 +23,11 @@ Revision History:
 
 --*/
 
-#include "dl_mk_quantifier_instantiation.h"
-#include "dl_context.h"
-#include "pattern_inference.h"
+#include "muz/transforms/dl_mk_quantifier_instantiation.h"
+#include "muz/base/dl_context.h"
+#include "ast/pattern/pattern_inference.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/ast_util.h"
 
 
 namespace datalog {
@@ -49,7 +51,7 @@ namespace datalog {
         for (unsigned j = 0; j < tsz; ++j) {
             conjs.push_back(r.get_tail(j));            
         }
-        qe::flatten_and(conjs);
+        flatten_and(conjs);
         for (unsigned j = 0; j < conjs.size(); ++j) {
             expr* e = conjs[j].get();
             quantifier* q;
@@ -70,7 +72,7 @@ namespace datalog {
         if (q->get_num_patterns() == 0) {
             proof_ref new_pr(m);
             pattern_inference_params params;
-            pattern_inference infer(m, params);
+            pattern_inference_rw infer(m, params);
             infer(q, qe, new_pr);
             q = to_quantifier(qe);
         }
@@ -232,13 +234,13 @@ namespace datalog {
         
         rule_set added_rules(m_ctx);
         proof_ref pr(m); 
-        rm.mk_rule(fml, pr, added_rules);
+        rm.mk_rule(fml, pr, added_rules, r.name());
         if (r.get_proof()) {
             // use def-axiom to encode that new rule is a weakening of the original.
             proof* p1 = r.get_proof();
             for (unsigned i = 0; i < added_rules.get_num_rules(); ++i) {
                 rule* r2 = added_rules.get_rule(i);
-                r2->to_formula(fml);
+                rm.to_formula(*r2, fml);
                 pr = m.mk_modus_ponens(m.mk_def_axiom(m.mk_implies(m.get_fact(p1), fml)), p1);
                 r2->set_proof(m, pr);
             }
@@ -252,9 +254,10 @@ namespace datalog {
         }
         bool has_quantifiers = false;
         unsigned sz = source.get_num_rules();
+        rule_manager& rm = m_ctx.get_rule_manager();
         for (unsigned i = 0; !has_quantifiers && i < sz; ++i) {
             rule& r = *source.get_rule(i);
-            has_quantifiers = has_quantifiers || r.has_quantifiers();   
+            has_quantifiers = has_quantifiers || rm.has_quantifiers(r);   
             if (r.has_negation()) {
                 return 0;
             }

@@ -17,11 +17,11 @@ Revision History:
 
 --*/
 
-#ifndef _DL_MK_EXPLANATIONS_H_
-#define _DL_MK_EXPLANATIONS_H_
+#ifndef DL_MK_EXPLANATIONS_H_
+#define DL_MK_EXPLANATIONS_H_
 
-#include "dl_context.h"
-#include "dl_rule_transformer.h"
+#include "muz/base/dl_context.h"
+#include "muz/base/dl_rule_transformer.h"
 
 namespace datalog {
 
@@ -82,5 +82,5 @@ namespace datalog {
     };
 };
 
-#endif /* _DL_MK_EXPLANATIONS_H_ */
+#endif /* DL_MK_EXPLANATIONS_H_ */
 

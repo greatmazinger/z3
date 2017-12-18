@@ -19,10 +19,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _TACTIC2SOLVER_H_
-#define _TACTIC2SOLVER_H_
+#ifndef TACTIC2SOLVER_H_
+#define TACTIC2SOLVER_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 class tactic_factory;
@@ -36,6 +36,7 @@ solver * mk_tactic2solver(ast_manager & m,
                           bool produce_models = true, 
                           bool produce_unsat_cores = false, 
                           symbol const & logic = symbol::null);
+
 
 solver_factory * mk_tactic2solver_factory(tactic * t);
 solver_factory * mk_tactic_factory2solver_factory(tactic_factory * f);

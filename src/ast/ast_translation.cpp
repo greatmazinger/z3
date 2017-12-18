@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#include "arith_decl_plugin.h"
-#include "bv_decl_plugin.h"
-#include "datatype_decl_plugin.h"
-#include "array_decl_plugin.h"
-#include "format.h"
-#include "ast_translation.h"
-#include "ast_ll_pp.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/datatype_decl_plugin.h"
+#include "ast/array_decl_plugin.h"
+#include "ast/format.h"
+#include "ast/ast_translation.h"
+#include "ast/ast_ll_pp.h"
 
 ast_translation::~ast_translation() {
     reset_cache();
@@ -37,11 +37,9 @@ void ast_translation::cleanup() {
 }
 
 void ast_translation::reset_cache() {
-    obj_map<ast, ast*>::iterator it  = m_cache.begin();
-    obj_map<ast, ast*>::iterator end = m_cache.end();
-    for (; it != end; ++it) {
-        m_from_manager.dec_ref(it->m_key);
-        m_to_manager.dec_ref(it->m_value);
+    for (auto & kv : m_cache) {
+        m_from_manager.dec_ref(kv.m_key);
+        m_to_manager.dec_ref(kv.m_value);
     }
     m_cache.reset();
 }
@@ -184,6 +182,7 @@ void ast_translation::mk_func_decl(func_decl * f, frame & fr) {
 }
 
 ast * ast_translation::process(ast const * _n) {
+    if (!_n) return 0;
     SASSERT(m_result_stack.empty());
     SASSERT(m_frame_stack.empty());
     SASSERT(m_extra_children_stack.empty());

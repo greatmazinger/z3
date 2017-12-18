@@ -16,17 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _EXPR_RAND_H_
-#define _EXPR_RAND_H_
+#ifndef EXPR_RAND_H_
+#define EXPR_RAND_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
 
 class expr_rand {
     ast_manager& m_manager;
-    unsigned     m_num_vars;
-    unsigned     m_num_apps;
-    unsigned     m_num_nodes;
     unsigned     m_max_steps;
     random_gen   m_random;
 

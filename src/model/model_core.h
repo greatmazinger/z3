@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _MODEL_CORE_H
-#define _MODEL_CORE_H
+#ifndef MODEL_CORE_H_
+#define MODEL_CORE_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
-#include"func_interp.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
+#include "model/func_interp.h"
 
 class model_core {
 protected:
@@ -36,8 +36,8 @@ protected:
     ptr_vector<func_decl>         m_func_decls;  
     
 public:
-    model_core(ast_manager & m):m_manager(m), m_ref_count(0) {}
-    virtual ~model_core() {}
+    model_core(ast_manager & m):m_manager(m), m_ref_count(0) { }
+    virtual ~model_core();
 
     ast_manager & get_manager() const { return m_manager; }
 
@@ -58,6 +58,12 @@ public:
     virtual unsigned get_num_uninterpreted_sorts() const = 0;
     virtual sort * get_uninterpreted_sort(unsigned idx) const = 0;
 
+    void register_decl(func_decl * d, expr * v);
+    void register_decl(func_decl * f, func_interp * fi);
+    void unregister_decl(func_decl * d);
+
+    virtual expr * get_some_value(sort * s) = 0;
+
     //
     // Reference counting
     //
@@ -68,6 +74,7 @@ public:
             dealloc(this);
         }
     }
+
 };
 
 #endif

@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _AST_SMT_PP_H_
-#define _AST_SMT_PP_H_
+#ifndef AST_SMT_PP_H_
+#define AST_SMT_PP_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 #include<string>
-#include"map.h"
+#include "util/map.h"
 
 class smt_renaming {
     typedef map<symbol, symbol, symbol_hash_proc, symbol_eq_proc> symbol2symbol;
@@ -67,7 +67,7 @@ public:
     void set_source_info(const char* si) { if (si) m_source_info = si; }
     void set_status(const char* s) { if (s) m_status = s; }
     void set_category(const char* c) { if (c) m_category = c; }
-    void set_logic(const char* l) { if (l) m_logic = l; }
+    void set_logic(symbol const& l) { m_logic = l; }
     void add_attributes(const char* s) { if (s) m_attributes += s; }
     void add_assumption(expr* n) { m_assumptions.push_back(n); }
     void add_assumption_star(expr* n) { m_assumptions_star.push_back(n); }
@@ -75,9 +75,7 @@ public:
 
     void set_is_declared(is_declared* id) { m_is_declared = id; }
 
-    void display(std::ostream& strm, expr* n);
     void display_smt2(std::ostream& strm, expr* n);
-    void display_expr(std::ostream& strm, expr* n);
     void display_expr_smt2(std::ostream& strm, expr* n, unsigned indent = 0, unsigned num_var_names = 0, char const* const* var_names = 0);
     void display_ast_smt2(std::ostream& strm, ast* n, unsigned indent = 0, unsigned num_var_names = 0, char const* const* var_names = 0);
 

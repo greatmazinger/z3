@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _MODEL2EXPR_H_
-#define _MODEL2EXPR_H_
+#ifndef MODEL2EXPR_H_
+#define MODEL2EXPR_H_
 
-#include"model.h"
+#include "model/model.h"
 
 void model2expr(model& m, expr_ref& result);
 
@@ -41,5 +41,5 @@ public:
 };
 
 
-#endif /* _MODEL2EXPR_H_ */
+#endif /* MODEL2EXPR_H_ */
 

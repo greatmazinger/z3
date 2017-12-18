@@ -19,12 +19,12 @@ Revision History:
 
 
 #include <sstream>
-#include"ast_pp.h"
-#include"ast_smt_pp.h"
-#include"dl_finite_product_relation.h"
-#include"dl_product_relation.h"
-#include"dl_sieve_relation.h"
-#include"dl_mk_explanations.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_smt_pp.h"
+#include "muz/rel/dl_finite_product_relation.h"
+#include "muz/rel/dl_product_relation.h"
+#include "muz/rel/dl_sieve_relation.h"
+#include "muz/rel/dl_mk_explanations.h"
 
 namespace datalog {
 
@@ -465,7 +465,7 @@ namespace datalog {
 
             unsigned sz = r.get_signature().size();
             ptr_vector<expr> subst_arg;
-            subst_arg.resize(sz, 0);
+            subst_arg.resize(sz);
             unsigned ofs = sz-1;
             for (unsigned i=0; i<sz; i++) {
                 SASSERT(!r.is_undefined(i) || !contains_var(m_new_rule, i));
@@ -654,7 +654,7 @@ namespace datalog {
         family_id expl_kind = m_er_plugin->get_kind();
         family_id expl_sieve_kind = sieve_plugin.get_relation_kind(sig, expl_sieve, expl_kind);
 
-        product_relation_plugin::rel_spec product_spec;
+        rel_spec product_spec;
         product_spec.push_back(inner_sieve_kind);
         product_spec.push_back(expl_sieve_kind);
 
@@ -705,7 +705,7 @@ namespace datalog {
 
     rule * mk_explanations::get_e_rule(rule * r) {
         rule_counter ctr;
-        ctr.count_rule_vars(m_manager, r);
+        ctr.count_rule_vars(r);
         unsigned max_var;
         unsigned next_var = ctr.get_max_positive(max_var) ? (max_var+1) : 0;
         unsigned head_var = next_var++;
@@ -833,6 +833,7 @@ namespace datalog {
         decl_set::iterator end = predicates.end();
         for (; it!=end; ++it) {
             func_decl * orig_decl = *it;
+            TRACE("dl", tout << mk_pp(orig_decl, m_manager) << "\n";);
             func_decl * e_decl = get_e_decl(orig_decl);
 
             if (!rmgr.try_get_relation(orig_decl) &&
@@ -854,7 +855,10 @@ namespace datalog {
                 scoped_ptr<relation_join_fn> product_fun = rmgr.mk_join_fn(orig_rel, *m_e_fact_relation, 0, 0, 0);
                 SASSERT(product_fun);
                 scoped_rel<relation_base> aux_extended_rel = (*product_fun)(orig_rel, *m_e_fact_relation);
+                TRACE("dl", tout << aux_extended_rel << " " << aux_extended_rel->get_plugin().get_name() << "\n";
+                      tout << e_rel.get_plugin().get_name() << "\n";);
                 scoped_ptr<relation_union_fn> union_fun = rmgr.mk_union_fn(e_rel, *aux_extended_rel);
+                TRACE("dl", tout << union_fun << "\n";);
                 SASSERT(union_fun);
                 (*union_fun)(e_rel, *aux_extended_rel);
             }

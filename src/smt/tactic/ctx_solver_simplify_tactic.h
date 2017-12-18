@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _CTX_SOLVER_SIMPLIFY_TACTIC_H_
-#define _CTX_SOLVER_SIMPLIFY_TACTIC_H_
+#ifndef CTX_SOLVER_SIMPLIFY_TACTIC_H_
+#define CTX_SOLVER_SIMPLIFY_TACTIC_H_
 
-#include"tactical.h"
+#include "tactic/tactical.h"
 
 tactic * mk_ctx_solver_simplify_tactic(ast_manager & m, params_ref const & p = params_ref());
 /*

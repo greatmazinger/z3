@@ -16,14 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_MK_UNFOLD_H_
-#define _DL_MK_UNFOLD_H_
+#ifndef DL_MK_UNFOLD_H_
+#define DL_MK_UNFOLD_H_
 
-#include"dl_context.h"
-#include"dl_rule_set.h"
-#include"uint_set.h"
-#include"dl_rule_transformer.h"
-#include"dl_mk_rule_inliner.h"
+#include "muz/base/dl_context.h"
+#include "muz/base/dl_rule_set.h"
+#include "util/uint_set.h"
+#include "muz/base/dl_rule_transformer.h"
+#include "muz/transforms/dl_mk_rule_inliner.h"
 
 namespace datalog {
 
@@ -49,5 +49,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_MK_UNFOLD_H_ */
+#endif /* DL_MK_UNFOLD_H_ */
 

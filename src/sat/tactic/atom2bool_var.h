@@ -16,11 +16,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _ATOM2BOOL_VAR_H_
-#define _ATOM2BOOL_VAR_H_
+#ifndef ATOM2BOOL_VAR_H_
+#define ATOM2BOOL_VAR_H_
 
-#include"expr2var.h"
-#include"sat_types.h"
+#include "ast/expr2var.h"
+#include "sat/sat_types.h"
 
 /**
    \brief Mapping from atoms into SAT boolean variables.

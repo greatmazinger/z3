@@ -16,17 +16,17 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_MK_UNBOUND_COMPRESSOR_H_
-#define _DL_MK_UNBOUND_COMPRESSOR_H_
+#ifndef DL_MK_UNBOUND_COMPRESSOR_H_
+#define DL_MK_UNBOUND_COMPRESSOR_H_
 
 #include<utility>
 
-#include"map.h"
-#include"obj_pair_hashtable.h"
+#include "util/map.h"
+#include "util/obj_pair_hashtable.h"
 
-#include"dl_context.h"
-#include"dl_rule_set.h"
-#include"dl_rule_transformer.h"
+#include "muz/base/dl_context.h"
+#include "muz/base/dl_rule_set.h"
+#include "muz/base/dl_rule_transformer.h"
 
 namespace datalog {
 
@@ -50,7 +50,7 @@ namespace datalog {
         typedef hashtable<c_info, c_info_hash, default_eq<c_info> > in_progress_table;
         typedef svector<c_info> todo_stack;
 
-        context &	    m_context;
+        context &           m_context;
         ast_manager &       m;
         rule_manager &      rm;
         rule_ref_vector     m_rules;
@@ -74,11 +74,14 @@ namespace datalog {
 
         void detect_tasks(rule_set const& source, unsigned rule_index);
         void add_task(func_decl * pred, unsigned arg_index);
-        void try_compress(rule_set const& source, unsigned rule_index);
+        lbool try_compress(rule_set const& source, unsigned rule_index);
         void add_decompression_rules(rule_set const& source, unsigned rule_index);
-        void mk_decompression_rule(rule * r, unsigned tail_index, unsigned arg_index, rule_ref& res);
+        rule_ref mk_decompression_rule(rule * r, unsigned tail_index, unsigned arg_index);
         void add_decompression_rule(rule_set const& source, rule * r, unsigned tail_index, unsigned arg_index);
         void replace_by_decompression_rule(rule_set const& source, unsigned rule_index, unsigned tail_index, unsigned arg_index);
+
+        void add_in_progress_indices(unsigned_vector& arg_indices, app* p);
+        bool decompress_rule(rule_set const& source, rule* r, unsigned_vector const& cmpressed_tail_pred_arg_indexes, unsigned rule_index, unsigned tail_index);
         void reset();
     public:
         mk_unbound_compressor(context & ctx);
@@ -88,5 +91,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_MK_UNBOUND_COMPRESSOR_H_ */
+#endif /* DL_MK_UNBOUND_COMPRESSOR_H_ */
 

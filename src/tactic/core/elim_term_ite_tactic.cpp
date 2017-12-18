@@ -17,11 +17,11 @@ Author:
 Notes:
 
 --*/
-#include"tactical.h"
-#include"defined_names.h"
-#include"rewriter_def.h"
-#include"filter_model_converter.h"
-#include"cooperate.h"
+#include "tactic/tactical.h"
+#include "ast/normal_forms/defined_names.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "tactic/filter_model_converter.h"
+#include "util/cooperate.h"
 
 class elim_term_ite_tactic : public tactic {
 
@@ -94,9 +94,6 @@ class elim_term_ite_tactic : public tactic {
             m_rw(m, p) {
         }
         
-        void set_cancel(bool f) {
-            m_rw.set_cancel(f);
-        }
         
         void updt_params(params_ref const & p) {
             m_rw.cfg().updt_params(p);
@@ -174,18 +171,10 @@ public:
     
     virtual void cleanup() {
         ast_manager & m = m_imp->m;
-        imp * d = alloc(imp, m, m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
-        dealloc(d);
+        m_imp->~imp();
+        m_imp = new (m_imp) imp(m, m_params);
     }
 
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_elim_term_ite_tactic(ast_manager & m, params_ref const & p) {

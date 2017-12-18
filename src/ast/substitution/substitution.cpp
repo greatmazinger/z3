@@ -17,10 +17,10 @@ Author:
 Revision History:
 
 --*/
-#include"substitution.h"
-#include"ast_pp.h"
-#include"ast_ll_pp.h"
-#include"rewriter.h"
+#include "ast/substitution/substitution.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_ll_pp.h"
+#include "ast/rewriter/rewriter.h"
 
 substitution::substitution(ast_manager & m):
     m_manager(m),
@@ -85,7 +85,7 @@ void substitution::apply(unsigned num_actual_offsets, unsigned const * deltas, e
     m_state = APPLY;
 
     unsigned         j;
-    expr *           e;
+    expr *           e = 0;
     unsigned         off;
     expr_offset      n1;
     bool             visited;
@@ -146,7 +146,7 @@ void substitution::apply(unsigned num_actual_offsets, unsigned const * deltas, e
                 bool has_new_args = false;
                 for (unsigned i = 0; i < num_args; i++) {
                     expr * arg     = to_app(e)->get_arg(i);
-                    expr * new_arg;
+                    expr * new_arg = 0;
                     
                     VERIFY(m_apply_cache.find(expr_offset(arg, off), new_arg));
                     new_args.push_back(new_arg);
@@ -214,7 +214,7 @@ void substitution::apply(unsigned num_actual_offsets, unsigned const * deltas, e
         }
     }
     SASSERT(m_apply_cache.contains(n));
-    m_apply_cache.find(n, e);
+    VERIFY(m_apply_cache.find(n, e));
     m_new_exprs.push_back(e);
     result = e;
     

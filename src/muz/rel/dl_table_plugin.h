@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_TABLE_PLUGIN_H_
-#define _DL_TABLE_PLUGIN_H_
+#ifndef DL_TABLE_PLUGIN_H_
+#define DL_TABLE_PLUGIN_H_
 
-#include"ast.h"
-#include"map.h"
-#include"vector.h"
+#include "ast/ast.h"
+#include "util/map.h"
+#include "util/vector.h"
 
 #include"dl_table_ops.h"
 
@@ -189,5 +189,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_TABLE_PLUGIN_H_ */
+#endif /* DL_TABLE_PLUGIN_H_ */
 

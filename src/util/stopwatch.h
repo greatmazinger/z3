@@ -17,8 +17,8 @@ Revision History:
 
 --*/
 
-#ifndef _STOPWATCH_H_
-#define _STOPWATCH_H_
+#ifndef STOPWATCH_H_
+#define STOPWATCH_H_
 
 #if defined(_WINDOWS) || defined(_CYGWIN)
 
@@ -43,6 +43,8 @@ public:
     }
 
     ~stopwatch() {};
+    
+    void add (const stopwatch &s) {/* TODO */}
 
     void reset() { m_elapsed.QuadPart = 0; }
     
@@ -69,6 +71,7 @@ public:
 #undef ARRAYSIZE
 #define ARRAYSIZE ARRAYSIZE_TEMP
 #undef max
+#undef min
 
 
 #elif defined(__APPLE__) && defined (__MACH__) // Mac OS X
@@ -89,6 +92,8 @@ public:
 
     ~stopwatch() {}
     
+    void add (const stopwatch &s) {m_time += s.m_time;}
+    
     void reset() {
         m_time = 0ull;
     }
@@ -105,7 +110,7 @@ public:
             mach_timespec_t _stop;
             clock_get_time(m_host_clock, &_stop);
             m_time += (_stop.tv_sec - m_start.tv_sec) * 1000000000ull;
-	    m_time += (_stop.tv_nsec - m_start.tv_nsec);
+            m_time += (_stop.tv_nsec - m_start.tv_nsec);
             m_running = false;
         }
     }
@@ -140,6 +145,8 @@ public:
 
     ~stopwatch() {}
     
+    void add (const stopwatch &s) {m_time += s.m_time;}
+    
     void reset() {
         m_time = 0ull;
     }
@@ -156,8 +163,8 @@ public:
             struct timespec _stop;
             clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &_stop);
             m_time += (_stop.tv_sec - m_start.tv_sec) * 1000000000ull;
-	    if (m_time != 0 || _stop.tv_nsec >= m_start.tv_nsec)
-	      m_time += (_stop.tv_nsec - m_start.tv_nsec);
+            if (m_time != 0 || _stop.tv_nsec >= m_start.tv_nsec)
+                m_time += (_stop.tv_nsec - m_start.tv_nsec);
             m_running = false;
         }
     }
@@ -177,5 +184,16 @@ public:
 };
 
 #endif
+
+struct scoped_watch {
+    stopwatch &m_sw;
+    scoped_watch (stopwatch &sw, bool reset=false): m_sw(sw) {
+        if (reset) m_sw.reset(); 
+        m_sw.start();
+    }
+    ~scoped_watch() {
+        m_sw.stop ();
+    }
+};
 
 #endif

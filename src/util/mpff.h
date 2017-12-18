@@ -20,16 +20,16 @@ Author:
 Revision History:
 
 --*/
-#ifndef _MPFF_H_
-#define _MPFF_H_
+#ifndef MPFF_H_
+#define MPFF_H_
 
-#include"id_gen.h"
-#include"util.h"
-#include"vector.h"
-#include"z3_exception.h"
-#include"scoped_numeral.h"
-#include"scoped_numeral_vector.h"
-#include"mpn.h"
+#include "util/id_gen.h"
+#include "util/util.h"
+#include "util/vector.h"
+#include "util/z3_exception.h"
+#include "util/scoped_numeral.h"
+#include "util/scoped_numeral_vector.h"
+#include "util/mpn.h"
 
 class mpff_manager;
 
@@ -94,7 +94,7 @@ class mpff_manager {
     //
     // - All values of type int, unsigned, int64 and uint64 can be precisely represented as mpff numerals.
     //
-    // - Hardware float and double values (corresponding to rationals) can also be precisely represented as mpff numberals.
+    // - Hardware float and double values (corresponding to rationals) can also be precisely represented as mpff numerals.
     //   That is, NaN, +oo and -oo are not supported by this module.
     //
     // - An exception (mpff_manager::exception) is thrown if overflow occurs. This can happen because the exponent is

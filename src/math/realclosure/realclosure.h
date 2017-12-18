@@ -19,15 +19,16 @@ Author:
 Notes:
 
 --*/
-#ifndef _REALCLOSURE_H_
-#define _REALCLOSURE_H_
+#ifndef REALCLOSURE_H_
+#define REALCLOSURE_H_
 
-#include"mpq.h"
-#include"params.h"
-#include"scoped_numeral.h"
-#include"scoped_numeral_vector.h"
-#include"interval.h"
-#include"z3_exception.h"
+#include "util/mpq.h"
+#include "util/params.h"
+#include "util/scoped_numeral.h"
+#include "util/scoped_numeral_vector.h"
+#include "math/interval/interval.h"
+#include "util/z3_exception.h"
+#include "util/rlimit.h"
 
 namespace realclosure {
     class num;
@@ -47,7 +48,7 @@ namespace realclosure {
         friend class save_interval_ctx;
         imp * m_imp;
     public:
-        manager(unsynch_mpq_manager & m, params_ref const & p = params_ref(), small_object_allocator * a = 0);
+        manager(reslimit& lim, unsynch_mpq_manager & m, params_ref const & p = params_ref(), small_object_allocator * a = 0);
         ~manager();
         typedef num                             numeral;
         typedef svector<numeral>                numeral_vector;
@@ -57,9 +58,6 @@ namespace realclosure {
         static void get_param_descrs(param_descrs & r);
         static void collect_param_descrs(param_descrs & r) { get_param_descrs(r); }
 
-        void set_cancel(bool f);
-        void cancel() { set_cancel(true); }
-        void reset_cancel() { set_cancel(false); }
 
         void updt_params(params_ref const & p);
 

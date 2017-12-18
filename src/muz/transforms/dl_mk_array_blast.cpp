@@ -17,9 +17,10 @@ Revision History:
 
 --*/
 
-#include "dl_mk_array_blast.h"
-#include "qe_util.h"
-#include "scoped_proof.h"
+#include "muz/transforms/dl_mk_array_blast.h"
+#include "ast/ast_util.h"
+#include "ast/scoped_proof.h"
+
 
 namespace datalog {
 
@@ -115,7 +116,7 @@ namespace datalog {
     
     bool mk_array_blast::ackermanize(rule const& r, expr_ref& body, expr_ref& head) {
         expr_ref_vector conjs(m), trail(m);
-        qe::flatten_and(body, conjs);
+        flatten_and(body, conjs);
         m_defs.reset();
         m_next_var = 0;
         ptr_vector<expr> todo;
@@ -124,6 +125,12 @@ namespace datalog {
         app_ref e1(m);
         app* s;
         var* v;
+
+        // disable Ackerman reduction if head contains a non-variable or non-constant argument.
+        for (unsigned i = 0; i < to_app(head)->get_num_args(); ++i) {
+            expr* arg = to_app(head)->get_arg(i);            
+            if (!is_var(arg) && !m.is_value(arg)) return false;
+        }
 
         for (unsigned i = 0; i < conjs.size(); ++i) {
             expr* e = conjs[i].get();
@@ -246,7 +253,7 @@ namespace datalog {
         for (unsigned i = utsz; i < tsz; ++i) {
             conjs.push_back(r.get_tail(i));
         }
-        qe::flatten_and(conjs);
+        flatten_and(conjs);
         for (unsigned i = 0; i < conjs.size(); ++i) {
             expr* x, *y, *e = conjs[i].get();
             
@@ -266,11 +273,13 @@ namespace datalog {
             }
             else {
                 m_rewriter(e, tmp);
-                change = change || (tmp != e);
                 new_conjs.push_back(tmp);
             }
         }
-        
+        if (!inserted) {
+            rules.add_rule(&r);
+            return false;        
+        }
         expr_ref fml1(m), fml2(m), body(m), head(m);
         body = m.mk_and(new_conjs.size(), new_conjs.c_ptr());
         head = r.get_head();
@@ -278,8 +287,9 @@ namespace datalog {
         m_rewriter(body);
         sub(head);
         m_rewriter(head);
-        change = ackermanize(r, body, head) || change;
-        if (!inserted && !change) {
+        TRACE("dl", tout << body << " => " << head << "\n";);
+        change = ackermanize(r, body, head);
+        if (!change) {
             rules.add_rule(&r);
             return false;
         }
@@ -287,6 +297,7 @@ namespace datalog {
         fml2 = m.mk_implies(body, head);
         proof_ref p(m);
         rule_set new_rules(m_ctx);
+        TRACE("dl", tout << fml2 << "\n";);
         rm.mk_rule(fml2, p, new_rules, r.name());
         
 
@@ -294,7 +305,7 @@ namespace datalog {
         if (m_simplifier.transform_rule(new_rules.last(), new_rule)) {
             if (r.get_proof()) {
                 scoped_proof _sc(m);
-                r.to_formula(fml1);
+                rm.to_formula(r, fml1);
                 p = m.mk_rewrite(fml1, fml2);
                 p = m.mk_modus_ponens(r.get_proof(), p);
                 new_rule->set_proof(m, p);                
@@ -308,6 +319,9 @@ namespace datalog {
     
     rule_set * mk_array_blast::operator()(rule_set const & source) {
 
+        if (!m_ctx.array_blast ()) {
+            return 0;
+        }
         rule_set* rules = alloc(rule_set, m_ctx);
         rules->inherit_predicates(source);
         rule_set::iterator it = source.begin(), end = source.end();

@@ -16,10 +16,10 @@ Revision History:
 
 --*/
 #include<iostream>
-#include"z3.h"
-#include"api_log_macros.h"
-#include"api_context.h"
-#include"api_stats.h"
+#include "api/z3.h"
+#include "api/api_log_macros.h"
+#include "api/api_context.h"
+#include "api/api_stats.h"
 
 extern "C" {
 
@@ -128,6 +128,10 @@ extern "C" {
         }
         return to_stats_ref(s).get_double_value(idx);
         Z3_CATCH_RETURN(0.0);
+    }
+
+    __uint64 Z3_API Z3_get_estimated_alloc_size(void) {
+        return memory::get_allocation_size();
     }
 
 };

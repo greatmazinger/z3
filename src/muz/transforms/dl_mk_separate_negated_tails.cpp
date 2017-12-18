@@ -17,8 +17,8 @@ Revision History:
 
 --*/
 
-#include "dl_mk_separate_negated_tails.h"
-#include "dl_context.h"
+#include "muz/transforms/dl_mk_separate_negated_tails.h"
+#include "muz/base/dl_context.h"
 
 namespace datalog {
 
@@ -37,10 +37,10 @@ namespace datalog {
     void mk_separate_negated_tails::get_private_vars(rule const& r, unsigned j) {
         m_vars.reset();
         m_fv.reset();
-        get_free_vars(r.get_head(), m_fv);
+        m_fv(r.get_head());
         for (unsigned i = 0; i < r.get_tail_size(); ++i) {
             if (i != j) {
-                get_free_vars(r.get_tail(i), m_fv);
+                m_fv.accumulate(r.get_tail(i));
             }
         }
         
@@ -49,7 +49,7 @@ namespace datalog {
             expr* v = p->get_arg(i);
             if (is_var(v)) {
                 unsigned idx = to_var(v)->get_idx();
-                if (idx >= m_fv.size() || !m_fv[idx]) {
+                if (!m_fv.contains(idx)) {
                     m_vars.push_back(v);
                 }
             }

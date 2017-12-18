@@ -15,30 +15,29 @@
   Revision History:
 
   --*/
-#include<iostream>
 #include<sstream>
 #include<vector>
-#include"z3.h"
-#include"api_log_macros.h"
-#include"api_context.h"
-#include"api_tactic.h"
-#include"api_solver.h"
-#include"api_model.h"
-#include"api_stats.h"
-#include"api_ast_vector.h"
-#include"tactic2solver.h"
-#include"scoped_ctrl_c.h"
-#include"cancel_eh.h"
-#include"scoped_timer.h"
-#include"smt_strategic_solver.h"
-#include"smt_solver.h"
-#include"smt_implied_equalities.h"
-#include"iz3interp.h"
-#include"iz3profiling.h"
-#include"iz3hash.h"
-#include"iz3pp.h"
-#include"iz3checker.h"
-#include"scoped_proof.h"
+#include "api/z3.h"
+#include "api/api_log_macros.h"
+#include "api/api_context.h"
+#include "api/api_tactic.h"
+#include "api/api_solver.h"
+#include "api/api_model.h"
+#include "api/api_stats.h"
+#include "api/api_ast_vector.h"
+#include "solver/tactic2solver.h"
+#include "util/scoped_ctrl_c.h"
+#include "util/cancel_eh.h"
+#include "util/scoped_timer.h"
+#include "tactic/portfolio/smt_strategic_solver.h"
+#include "smt/smt_solver.h"
+#include "smt/smt_implied_equalities.h"
+#include "interp/iz3interp.h"
+#include "interp/iz3profiling.h"
+#include "interp/iz3hash.h"
+#include "interp/iz3pp.h"
+#include "interp/iz3checker.h"
+#include "ast/scoped_proof.h"
 
 using namespace stl_ext;
 
@@ -207,12 +206,12 @@ extern "C" {
         opts->map[name] = value;
     }
 
-    Z3_ast_vector Z3_API Z3_get_interpolant(__in Z3_context c, __in Z3_ast pf, __in Z3_ast pat, __in Z3_params p){
+    Z3_ast_vector Z3_API Z3_get_interpolant(Z3_context c, Z3_ast pf, Z3_ast pat, Z3_params p){
         Z3_TRY;
         LOG_Z3_get_interpolant(c, pf, pat, p);
         RESET_ERROR_CODE();
 
-        Z3_ast_vector_ref * v = alloc(Z3_ast_vector_ref, mk_c(c)->m());
+        Z3_ast_vector_ref * v = alloc(Z3_ast_vector_ref, *mk_c(c), mk_c(c)->m());
         mk_c(c)->save_object(v);
 
         ast *_pf = to_ast(pf);
@@ -240,7 +239,7 @@ extern "C" {
         Z3_CATCH_RETURN(0);
     }
 
-    Z3_lbool Z3_API Z3_compute_interpolant(__in Z3_context c, __in Z3_ast pat, __in Z3_params p, __out Z3_ast_vector *out_interp, __out Z3_model *model){
+    Z3_lbool Z3_API Z3_compute_interpolant(Z3_context c, Z3_ast pat, Z3_params p, Z3_ast_vector *out_interp, Z3_model *model){
         Z3_TRY;
         LOG_Z3_compute_interpolant(c, pat, p, out_interp, model);
         RESET_ERROR_CODE();
@@ -250,10 +249,18 @@ extern "C" {
         params_ref _p;
         _p.set_bool("proof", true); // this is currently useless
 
-        scoped_proof_mode spm(mk_c(c)->m(), PGM_FINE);
+        scoped_proof_mode spm(mk_c(c)->m(), PGM_ENABLED);
         scoped_ptr<solver_factory> sf = mk_smt_solver_factory();
         scoped_ptr<solver> m_solver((*sf)(mk_c(c)->m(), _p, true, true, true, ::symbol::null));
         m_solver.get()->updt_params(_p); // why do we have to do this?
+
+
+        // some boilerplate stolen from Z3_solver_check
+        unsigned timeout     =  p?to_params(p)->m_params.get_uint("timeout", mk_c(c)->get_timeout()):UINT_MAX;
+        unsigned rlimit      =  p?to_params(p)->m_params.get_uint("rlimit", mk_c(c)->get_rlimit()):0;
+        bool     use_ctrl_c  =  p?to_params(p)->m_params.get_bool("ctrl_c", false): false;
+        cancel_eh<reslimit> eh(mk_c(c)->m().limit());
+        api::context::set_interruptable si(*(mk_c(c)), eh);
 
         ast *_pat = to_ast(pat);
 
@@ -263,14 +270,27 @@ extern "C" {
         ast_manager &_m = mk_c(c)->m();
 
         model_ref m;
-        lbool _status = iz3interpolate(_m,
-                                       *(m_solver.get()),
-                                       _pat,
-                                       cnsts,
-                                       interp,
-                                       m,
-                                       0 // ignore params for now
-                                       );
+        lbool _status;
+
+        {
+            scoped_ctrl_c ctrlc(eh, false, use_ctrl_c);
+            scoped_timer timer(timeout, &eh);
+            scoped_rlimit _rlimit(mk_c(c)->m().limit(), rlimit);
+            try {
+                _status = iz3interpolate(_m,
+                                         *(m_solver.get()),
+                                         _pat,
+                                         cnsts,
+                                         interp,
+                                         m,
+                                         0 // ignore params for now
+                                         );
+            }
+            catch (z3_exception & ex) {
+                mk_c(c)->handle_exception(ex);
+                RETURN_Z3_compute_interpolant Z3_L_UNDEF;
+            }
+        }
 
         for (unsigned i = 0; i < cnsts.size(); i++)
             _m.dec_ref(cnsts[i]);
@@ -282,7 +302,7 @@ extern "C" {
 
         if (_status == l_false){
             // copy result back
-            v = alloc(Z3_ast_vector_ref, mk_c(c)->m());
+            v = alloc(Z3_ast_vector_ref, *mk_c(c), mk_c(c)->m());
             mk_c(c)->save_object(v);
             for (unsigned i = 0; i < interp.size(); i++){
                 v->m_ast_vector.push_back(interp[i]);
@@ -290,17 +310,19 @@ extern "C" {
             }
         }
         else {
-            model_ref _m;
-            m_solver.get()->get_model(_m);
-            Z3_model_ref *tmp_val = alloc(Z3_model_ref);
-            tmp_val->m_model = _m.get();
-            mk_c(c)->save_object(tmp_val);
-            *model = of_model(tmp_val);
+            model_ref mr;
+            m_solver.get()->get_model(mr);
+            if(mr.get()){
+                Z3_model_ref *tmp_val = alloc(Z3_model_ref, *mk_c(c));
+                tmp_val->m_model = mr.get();
+                mk_c(c)->save_object(tmp_val);
+                *model = of_model(tmp_val);
+            }
         }
 
         *out_interp = of_ast_vector(v);
 
-        return status;
+        RETURN_Z3_compute_interpolant status;
         Z3_CATCH_RETURN(Z3_L_UNDEF);
     }
 
@@ -352,7 +374,7 @@ extern "C" {
         for(int i = 0; i < num_theory; i++)
             fmlas[i] = Z3_mk_implies(ctx,Z3_mk_true(ctx),fmlas[i]);
         std::copy(cnsts,cnsts+num,fmlas.begin()+num_theory);
-        Z3_string smt = Z3_benchmark_to_smtlib_string(ctx,"none","AUFLIA","unknown","",num_fmlas-1,&fmlas[0],fmlas[num_fmlas-1]);  
+        Z3_string smt = Z3_benchmark_to_smtlib_string(ctx,"none","AUFLIA","unknown","",num_fmlas-1,&fmlas[0],fmlas[num_fmlas-1]);
         std::ofstream f(filename);
         if(num_theory)
             f << ";! THEORY=" << num_theory << "\n";
@@ -446,7 +468,7 @@ extern "C" {
         }
         f.close();
 
-#if 0    
+#if 0
 
 
         if(!parents){
@@ -488,31 +510,15 @@ extern "C" {
         read_error.clear();
         try {
             std::string foo(filename);
-            if (foo.size() >= 5 && foo.substr(foo.size() - 5) == ".smt2"){
-                Z3_ast assrts = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
-                Z3_app app = Z3_to_app(ctx, assrts);
-                int nconjs = Z3_get_app_num_args(ctx, app);
-                assertions.resize(nconjs);
-                for (int k = 0; k < nconjs; k++)
-                    assertions[k] = Z3_get_app_arg(ctx, app, k);
-            }
-            else {
-                Z3_parse_smtlib_file(ctx, filename, 0, 0, 0, 0, 0, 0);
-                int numa = Z3_get_smtlib_num_assumptions(ctx);
-                int numf = Z3_get_smtlib_num_formulas(ctx);
-                int num = numa + numf;
-
-                assertions.resize(num);
-                for (int j = 0; j < num; j++){
-                    if (j < numa)
-                        assertions[j] = Z3_get_smtlib_assumption(ctx, j);
-                    else
-                        assertions[j] = Z3_get_smtlib_formula(ctx, j - numa);
-                }
-            }
+            Z3_ast assrts = Z3_parse_smtlib2_file(ctx, filename, 0, 0, 0, 0, 0, 0);
+            Z3_app app = Z3_to_app(ctx, assrts);
+            int nconjs = Z3_get_app_num_args(ctx, app);
+            assertions.resize(nconjs);
+            for (int k = 0; k < nconjs; k++)
+                assertions[k] = Z3_get_app_arg(ctx, app, k);
         }
         catch (...) {
-            read_error << "SMTLIB parse error: " << Z3_get_smtlib_error(ctx);
+            read_error << "SMTLIB parse error: " << Z3_get_parser_error(ctx);
             read_msg = read_error.str();
             *error = read_msg.c_str();
             return false;
@@ -708,15 +714,15 @@ extern "C" {
     def_API('Z3_interpolate', BOOL, (_in(CONTEXT), _in(UINT), _in_array(1, AST), _in_array(1, UINT), _in(PARAMS), _out_array(1, AST), _out(MODEL), _out(LITERALS), _in(UINT), _in(UINT), _in_array(9, AST)))
 */
 
-Z3_lbool Z3_API Z3_interpolate(__in Z3_context ctx,
-                               __in unsigned num,
-                               __in_ecount(num) Z3_ast *cnsts,
-                               __in_ecount(num) unsigned *parents,
-                               __in Z3_params options,
-                               __out_ecount(num - 1) Z3_ast *interps,
-                               __out Z3_model *model,
-                               __out Z3_literals *labels,
-                               __in unsigned incremental,
-                               __in unsigned num_theory,
-                               __in_ecount(num_theory) Z3_ast *theory);
+Z3_lbool Z3_API Z3_interpolate(Z3_context ctx,
+                               unsigned num,
+                               Z3_ast *cnsts,
+                               unsigned *parents,
+                               Z3_params options,
+                               Z3_ast *interps,
+                               Z3_model *model,
+                               Z3_literals *labels,
+                               unsigned incremental,
+                               unsigned num_theory,
+                               Z3_ast *theory);
 #endif

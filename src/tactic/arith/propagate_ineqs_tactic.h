@@ -30,10 +30,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _PROPAGATE_INEQS_TACTIC_H_
-#define _PROPAGATE_INEQS_TACTIC_H_
+#ifndef PROPAGATE_INEQS_TACTIC_H_
+#define PROPAGATE_INEQS_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

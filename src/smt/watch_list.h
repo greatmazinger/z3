@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _WATCH_LIST_H_
-#define _WATCH_LIST_H_
+#ifndef WATCH_LIST_H_
+#define WATCH_LIST_H_
 
-#include"smt_clause.h"
-#include"memory_manager.h"
+#include "smt/smt_clause.h"
+#include "util/memory_manager.h"
 
 namespace smt {
 
@@ -84,6 +84,10 @@ namespace smt {
     public:
         watch_list():
             m_data(0) {
+        }
+
+        watch_list(watch_list && other) : m_data(0) {
+            std::swap(m_data, other.m_data);
         }
         
         ~watch_list() {
@@ -182,5 +186,5 @@ namespace smt {
 
 };
 
-#endif /* _WATCH_LIST_H_ */
+#endif /* WATCH_LIST_H_ */
 

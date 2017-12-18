@@ -17,12 +17,12 @@ Notes:
     Major revision on 2011-10-06
 
 --*/
-#ifndef _NNF_H_
-#define _NNF_H_
+#ifndef NNF_H_
+#define NNF_H_
 
-#include"ast.h"
-#include"params.h"
-#include"defined_names.h"
+#include "ast/ast.h"
+#include "util/params.h"
+#include "ast/normal_forms/defined_names.h"
 
 class nnf {
     struct imp;
@@ -44,12 +44,8 @@ public:
     */
     static void get_param_descrs(param_descrs & r);
 
-    void cancel() { set_cancel(true); }
-    void reset_cancel() { set_cancel(false); }
-    void set_cancel(bool f);
-
     void reset();
     void reset_cache();
 };
 
-#endif /* _NNF_H_ */
+#endif /* NNF_H_ */

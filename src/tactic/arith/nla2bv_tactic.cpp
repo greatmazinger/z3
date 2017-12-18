@@ -18,19 +18,19 @@ Notes:
     The original file was called qfnla2bv.cpp
 
 --*/
-#include "tactical.h"
-#include "arith_decl_plugin.h"
-#include "bv_decl_plugin.h"
-#include "for_each_expr.h"
-#include "expr_replacer.h"
-#include "optional.h"
-#include "bv2int_rewriter.h"
-#include "bv2real_rewriter.h"
-#include "extension_model_converter.h"
-#include "filter_model_converter.h"
-#include "bound_manager.h"
-#include "obj_pair_hashtable.h"
-#include "ast_smt2_pp.h"
+#include "tactic/tactical.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/for_each_expr.h"
+#include "ast/rewriter/expr_replacer.h"
+#include "util/optional.h"
+#include "tactic/arith/bv2int_rewriter.h"
+#include "tactic/arith/bv2real_rewriter.h"
+#include "tactic/extension_model_converter.h"
+#include "tactic/filter_model_converter.h"
+#include "tactic/arith/bound_manager.h"
+#include "util/obj_pair_hashtable.h"
+#include "ast/ast_smt2_pp.h"
 
 //
 // 
@@ -60,7 +60,7 @@ class nla2bv_tactic : public tactic {
         expr_ref_vector             m_trail;
         unsigned                    m_num_bits;
         unsigned                    m_default_bv_size;
-        ref<filter_model_converter> m_fmc;
+        filter_model_converter_ref  m_fmc;
         
     public:
         imp(ast_manager & m, params_ref const& p):
@@ -404,17 +404,11 @@ class nla2bv_tactic : public tactic {
         nla2bv_tactic & m_owner; 
         scoped_set_imp(nla2bv_tactic & o, imp & i):
             m_owner(o) {
-            #pragma omp critical (tactic_cancel)
-            {
-                m_owner.m_imp = &i;
-            }
+            m_owner.m_imp = &i;            
         }
 
         ~scoped_set_imp() {
-            #pragma omp critical (tactic_cancel)
-            {
-                m_owner.m_imp = 0;
-            }
+            m_owner.m_imp = 0;            
         }
     };
     

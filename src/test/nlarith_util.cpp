@@ -1,7 +1,13 @@
-#include "nlarith_util.h"
-#include "arith_decl_plugin.h"
-#include "ast_pp.h"
-#include "reg_decl_plugins.h"
+
+/*++
+Copyright (c) 2015 Microsoft Corporation
+
+--*/
+
+#include "qe/nlarith_util.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/ast_pp.h"
+#include "ast/reg_decl_plugins.h"
 
 void tst_nlarith_util() {
     ast_manager M;

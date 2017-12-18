@@ -17,7 +17,7 @@ Revision History:
 
 --*/
 #include<iostream>
-#include"z3_exception.h"
+#include "util/z3_exception.h"
 
 class ex {
 public:
@@ -54,7 +54,7 @@ static void tst1() {
 
 static void tst2() {
     try {
-        throw default_exception("Format %d %s", 12, "twelve");
+        throw default_exception(default_exception::fmt(), "Format %d %s", 12, "twelve");
     }
     catch (z3_exception& ex) {
         std::cerr << ex.msg() << "\n";

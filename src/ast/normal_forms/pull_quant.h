@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _PULL_QUANT_H_
-#define _PULL_QUANT_H_
+#ifndef PULL_QUANT_H_
+#define PULL_QUANT_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 /**
    \brief Pull nested quantifiers in a formula. 
@@ -56,4 +56,4 @@ public:
     void reset();
 };
 
-#endif /* _PULL_QUANT_H_ */
+#endif /* PULL_QUANT_H_ */

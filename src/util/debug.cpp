@@ -21,8 +21,8 @@ Revision History:
 #include<unistd.h>
 #endif
 #include<iostream>
-#include"str_hashtable.h"
-#include"z3_exception.h"
+#include "util/str_hashtable.h"
+#include "util/z3_exception.h"
 
 static volatile bool g_enable_assertions = true;
 
@@ -76,7 +76,7 @@ void invoke_gdb() {
     for (;;) {
         std::cerr << "(C)ontinue, (A)bort, (S)top, (T)hrow exception, Invoke (G)DB\n";
         char result;
-        bool ok = (std::cin >> result);
+        bool ok = bool(std::cin >> result);
         if (!ok) exit(ERR_INTERNAL_FATAL); // happens if std::cin is eof or unattached.
         switch(result) {
         case 'C':

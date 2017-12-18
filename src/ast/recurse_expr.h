@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _RECURSE_EXPR_H_
-#define _RECURSE_EXPR_H_
+#ifndef RECURSE_EXPR_H_
+#define RECURSE_EXPR_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
 
 template<typename T, typename Visitor, bool IgnorePatterns=false, bool CallDestructors=true>
 class recurse_expr : public Visitor {
@@ -44,4 +44,4 @@ public:
     void finalize() { m_cache.finalize(); m_todo.finalize(); }
 };
 
-#endif /* _RECURSE_EXPR_H_ */
+#endif /* RECURSE_EXPR_H_ */

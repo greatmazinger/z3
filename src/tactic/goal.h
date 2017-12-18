@@ -25,16 +25,16 @@ Author:
 Revision History:
 
 --*/
-#ifndef _GOAL_H_
-#define _GOAL_H_
+#ifndef GOAL_H_
+#define GOAL_H_
 
-#include"ast.h"
-#include"ast_translation.h"
-#include"ast_printer.h"
-#include"for_each_expr.h"
-#include"ref.h"
-#include"ref_vector.h"
-#include"ref_buffer.h"
+#include "ast/ast.h"
+#include "ast/ast_translation.h"
+#include "ast/ast_printer.h"
+#include "ast/for_each_expr.h"
+#include "util/ref.h"
+#include "util/ref_vector.h"
+#include "util/ref_buffer.h"
 
 class goal {
 public:
@@ -62,7 +62,7 @@ protected:
     unsigned              m_precision:2;       // PRECISE, UNDER, OVER.
 
     void push_back(expr * f, proof * pr, expr_dependency * d);
-    void quick_process(bool save_first, expr * & f, expr_dependency * d);
+    void quick_process(bool save_first, expr_ref & f, expr_dependency * d);
     void process_and(bool save_first, app * f, proof * pr, expr_dependency * d, expr_ref & out_f, proof_ref & out_pr);
     void process_not_or(bool save_first, app * f, proof * pr, expr_dependency * d, expr_ref & out_f, proof_ref & out_pr);
     void slow_process(bool save_first, expr * f, proof * pr, expr_dependency * d, expr_ref & out_f, proof_ref & out_pr);

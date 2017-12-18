@@ -1,6 +1,6 @@
 /**
 Copyright (c) 2012-2014 Microsoft Corporation
-   
+
 Module Name:
 
     FuncDecl.java
@@ -12,8 +12,8 @@ Author:
     @author Christoph Wintersteiger (cwinter) 2012-03-15
 
 Notes:
-    
-**/ 
+
+**/
 
 package com.microsoft.z3;
 
@@ -27,60 +27,48 @@ import com.microsoft.z3.enumerations.Z3_parameter_kind;
 public class FuncDecl extends AST
 {
     /**
-     * Comparison operator.
-     * 
-     * @return True if {@code a"/> and <paramref name="b} share the
-     *         same context and are equal, false otherwise.
-     **/
-    /* Overloaded operators are not translated. */
-
-    /**
-     * Comparison operator.
-     * 
-     * @return True if {@code a"/> and <paramref name="b} do not
-     *         share the same context or are not equal, false otherwise.
-     **/
-    /* Overloaded operators are not translated. */
-
-    /**
      * Object comparison.
      **/
+    @Override
     public boolean equals(Object o)
     {
-        FuncDecl casted = (FuncDecl) o;
-        if (casted == null)
-            return false;
-        return this == casted;
+        if (o == this) return true;
+        if (!(o instanceof FuncDecl)) return false;
+        FuncDecl other = (FuncDecl) o;
+
+        return
+            (getContext().nCtx() == other.getContext().nCtx()) &&
+            (Native.isEqFuncDecl(
+                getContext().nCtx(),
+                getNativeObject(),
+                other.getNativeObject()));
     }
 
-    /**
-     * A hash code.
-     **/
-    public int hashCode()
-    {
-        return super.hashCode();
-    }
-
-    /**
-     * A string representations of the function declaration.
-     **/
+    @Override
     public String toString()
     {
-        try
-        {
-            return Native.funcDeclToString(getContext().nCtx(), getNativeObject());
-        } catch (Z3Exception e)
-        {
-            return "Z3Exception: " + e.getMessage();
-        }
+        return Native.funcDeclToString(getContext().nCtx(), getNativeObject());
     }
 
     /**
      * Returns a unique identifier for the function declaration.
      **/
+    @Override
     public int getId()
     {
         return Native.getFuncDeclId(getContext().nCtx(), getNativeObject());
+    }
+
+    /**
+     * Translates (copies) the function declaration to the Context {@code ctx}.
+     * @param ctx A context
+     *
+     * @return A copy of the function declaration which is associated with {@code ctx}
+     * @throws Z3Exception on error
+     **/
+    public FuncDecl translate(Context ctx)
+    {
+        return (FuncDecl) super.translate(ctx);
     }
 
     /**
@@ -92,8 +80,8 @@ public class FuncDecl extends AST
     }
 
     /**
-     * The size of the domain of the function declaration 
-     * @see getArity
+     * The size of the domain of the function declaration
+     * @see #getArity
      **/
     public int getDomainSize()
     {
@@ -348,7 +336,7 @@ public class FuncDecl extends AST
     }
 
     FuncDecl(Context ctx, Symbol name, Sort[] domain, Sort range)
-           
+
     {
         super(ctx, Native.mkFuncDecl(ctx.nCtx(), name.getNativeObject(),
                 AST.arrayLength(domain), AST.arrayToNative(domain),
@@ -357,7 +345,7 @@ public class FuncDecl extends AST
     }
 
     FuncDecl(Context ctx, String prefix, Sort[] domain, Sort range)
-           
+
     {
         super(ctx, Native.mkFreshFuncDecl(ctx.nCtx(), prefix,
                 AST.arrayLength(domain), AST.arrayToNative(domain),
@@ -375,10 +363,7 @@ public class FuncDecl extends AST
     }
 
     /**
-     * Create expression that applies function to arguments. 
-     * @param args 
-     * 
-     * @return
+     * Create expression that applies function to arguments.
      **/
     public Expr apply(Expr ... args)
     {

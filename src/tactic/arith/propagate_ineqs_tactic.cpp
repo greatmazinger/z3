@@ -30,11 +30,11 @@ Author:
 Notes:
 
 --*/
-#include"tactical.h"
-#include"bound_propagator.h"
-#include"arith_decl_plugin.h"
-#include"simplify_tactic.h"
-#include"ast_smt2_pp.h"
+#include "tactic/tactical.h"
+#include "tactic/arith/bound_propagator.h"
+#include "ast/arith_decl_plugin.h"
+#include "tactic/core/simplify_tactic.h"
+#include "ast/ast_smt2_pp.h"
 
 class propagate_ineqs_tactic : public tactic {
     struct     imp;
@@ -55,8 +55,6 @@ public:
     virtual void operator()(goal_ref const & g, goal_ref_buffer & result, model_converter_ref & mc, proof_converter_ref & pc, expr_dependency_ref & core);
     
     virtual void cleanup();
-protected:
-    virtual void set_cancel(bool f);
 };
 
 tactic * mk_propagate_ineqs_tactic(ast_manager & m, params_ref const & p) {
@@ -512,9 +510,6 @@ struct propagate_ineqs_tactic::imp {
         TRACE("propagate_ineqs_tactic", r->display(tout););
     }
 
-    void set_cancel(bool f) {
-        // TODO
-    }
 };
 
 propagate_ineqs_tactic::propagate_ineqs_tactic(ast_manager & m, params_ref const & p):
@@ -546,16 +541,9 @@ void propagate_ineqs_tactic::operator()(goal_ref const & g,
     SASSERT(r->is_well_sorted());
 }
 
-void propagate_ineqs_tactic::set_cancel(bool f) {
-    if (m_imp)
-        m_imp->set_cancel(f);
-}
  
 void propagate_ineqs_tactic::cleanup() {
     imp * d = alloc(imp, m_imp->m, m_params);
-    #pragma omp critical (tactic_cancel)
-    {
-        std::swap(d, m_imp);
-    }
+    std::swap(d, m_imp);    
     dealloc(d);
 }

@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#include"expr_replacer.h"
-#include"rewriter_def.h"
-#include"th_rewriter.h"
-#include"cooperate.h"
+#include "ast/rewriter/expr_replacer.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "util/cooperate.h"
 
 void expr_replacer::operator()(expr * t, expr_ref & result, proof_ref & result_pr) {
     expr_dependency_ref result_dep(m());
@@ -107,9 +107,6 @@ public:
         }
     }
 
-    virtual void set_cancel(bool f) {
-        m_replacer.set_cancel(f);
-    }
 
     virtual unsigned get_num_steps() const {
         return m_replacer.get_num_steps();
@@ -144,10 +141,6 @@ public:
         m_r(t, result, result_pr);
         result_dep = m_r.get_used_dependencies();
         m_r.reset_used_dependencies();
-    }
-
-    virtual void set_cancel(bool f) {
-        m_r.set_cancel(f);
     }
 
     virtual unsigned get_num_steps() const { 

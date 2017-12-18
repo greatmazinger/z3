@@ -16,15 +16,15 @@ Author:
 Revision History:
 
 --*/
-#ifndef _EXPR_CONTEXT_SIMPLIFIER_H_
-#define _EXPR_CONTEXT_SIMPLIFIER_H_
+#ifndef EXPR_CONTEXT_SIMPLIFIER_H_
+#define EXPR_CONTEXT_SIMPLIFIER_H_
 
-#include "ast.h"
-#include "obj_hashtable.h"
-#include "basic_simplifier_plugin.h"
-#include "smt_params.h"
-#include "smt_kernel.h"
-#include "arith_decl_plugin.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
+#include "smt/params/smt_params.h"
+#include "smt/smt_kernel.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/rewriter/bool_rewriter.h"
 
 class expr_context_simplifier {
     typedef obj_map<expr, bool> context_map;
@@ -33,7 +33,7 @@ class expr_context_simplifier {
     arith_util   m_arith;
     context_map  m_context;
     expr_ref_vector m_trail;
-    basic_simplifier_plugin m_simp;
+    bool_rewriter m_simp;
     expr_mark m_mark;
     bool m_forward;
 public:
@@ -77,8 +77,7 @@ public:
     
     void collect_statistics(statistics & st) const { m_solver.collect_statistics(st); }
     void reset_statistics() { m_solver.reset_statistics(); }
-    void set_cancel(bool f) { m_solver.set_cancel(f); }
 };
 
-#endif /* _EXPR_CONTEXT_SIMPLIFIER_H__ */
+#endif /* EXPR_CONTEXT_SIMPLIFIER_H_ */
 

@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_TABLE_RELATION_H_
-#define _DL_TABLE_RELATION_H_
+#ifndef DL_TABLE_RELATION_H_
+#define DL_TABLE_RELATION_H_
 
 
-#include "dl_base.h"
-#include "dl_util.h"
+#include "muz/rel/dl_base.h"
+#include "muz/base/dl_util.h"
 
 namespace datalog {
 
@@ -49,7 +49,7 @@ namespace datalog {
         virtual bool can_handle_signature(const relation_signature & s);
         
         virtual relation_base * mk_empty(const relation_signature & s);
-        virtual relation_base * mk_full(const relation_signature & s, func_decl* p, family_id kind);
+        virtual relation_base * mk_full_relation(const relation_signature & s, func_decl* p, family_id kind);
         relation_base * mk_from_table(const relation_signature & s, table_base * t);
 
     protected:
@@ -129,5 +129,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_TABLE_RELATION_H_ */
+#endif /* DL_TABLE_RELATION_H_ */
 

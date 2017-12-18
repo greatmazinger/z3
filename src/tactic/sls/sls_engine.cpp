@@ -18,17 +18,17 @@ Notes:
 --*/
 #include<float.h> // Need DBL_MAX
 
-#include"map.h"
-#include"ast_smt2_pp.h"
-#include"ast_pp.h"
-#include"var_subst.h"
-#include"model_pp.h"
-#include"tactic.h"
-#include"cooperate.h"
-#include"luby.h"
+#include "util/map.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/ast_pp.h"
+#include "ast/rewriter/var_subst.h"
+#include "model/model_pp.h"
+#include "tactic/tactic.h"
+#include "util/cooperate.h"
+#include "util/luby.h"
 
-#include"sls_params.hpp"
-#include"sls_engine.h"
+#include "tactic/sls/sls_params.hpp"
+#include "tactic/sls/sls_engine.h"
 
 
 sls_engine::sls_engine(ast_manager & m, params_ref const & p) :
@@ -37,7 +37,6 @@ sls_engine::sls_engine(ast_manager & m, params_ref const & p) :
     m_zero(m_mpz_manager.mk_z(0)),
     m_one(m_mpz_manager.mk_z(1)),
     m_two(m_mpz_manager.mk_z(2)),
-    m_cancel(false),
     m_bv_util(m),
     m_tracker(m, m_bv_util, m_mpz_manager, m_powers),
     m_evaluator(m, m_bv_util, m_tracker, m_mpz_manager, m_powers)
@@ -80,9 +79,23 @@ void sls_engine::updt_params(params_ref const & _p) {
         NOT_IMPLEMENTED_YET();
 }
 
+void sls_engine::collect_statistics(statistics& st) const {
+    double seconds = m_stats.m_stopwatch.get_current_seconds();            
+    st.update("sls restarts", m_stats.m_restarts);
+    st.update("sls full evals", m_stats.m_full_evals);
+    st.update("sls incr evals", m_stats.m_incr_evals);
+    st.update("sls incr evals/sec", m_stats.m_incr_evals / seconds);
+    st.update("sls FLIP moves", m_stats.m_flips);
+    st.update("sls INC moves", m_stats.m_incs);
+    st.update("sls DEC moves", m_stats.m_decs);
+    st.update("sls INV moves", m_stats.m_invs);
+    st.update("sls moves", m_stats.m_moves);
+    st.update("sls moves/sec", m_stats.m_moves / seconds);
+}
+
 void sls_engine::checkpoint() {
-    if (m_cancel)
-        throw tactic_exception(TACTIC_CANCELED_MSG);
+    if (m_manager.canceled())
+        throw tactic_exception(m_manager.limit().get_cancel_msg());
     cooperate("sls");
 }
 

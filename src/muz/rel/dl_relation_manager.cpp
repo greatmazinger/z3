@@ -19,14 +19,14 @@ Revision History:
 
 
 #include <sstream>
-#include"ast_pp.h"
-#include"dl_check_table.h"
-#include"dl_context.h"
-#include"dl_finite_product_relation.h"
-#include"dl_product_relation.h"
-#include"dl_sieve_relation.h"
-#include"dl_table_relation.h"
-#include"dl_relation_manager.h"
+#include "ast/ast_pp.h"
+#include "muz/rel/dl_check_table.h"
+#include "muz/base/dl_context.h"
+#include "muz/rel/dl_finite_product_relation.h"
+#include "muz/rel/dl_product_relation.h"
+#include "muz/rel/dl_sieve_relation.h"
+#include "muz/rel/dl_table_relation.h"
+#include "muz/rel/dl_relation_manager.h"
 
 namespace datalog {
 
@@ -36,13 +36,10 @@ namespace datalog {
 
 
     void relation_manager::reset_relations() {
-        relation_map::iterator it=m_relations.begin();
-        relation_map::iterator end=m_relations.end();
-        for(;it!=end;++it) {
-            func_decl * pred = it->m_key;
+        for (auto const& kv : m_relations) {
+            func_decl * pred = kv.m_key;
             get_context().get_manager().dec_ref(pred); //inc_ref in get_relation
-            relation_base * r=(*it).m_value;
-            r->deallocate();
+            kv.m_value->deallocate();
         }
         m_relations.reset();
     }
@@ -108,7 +105,7 @@ namespace datalog {
 
     void relation_manager::store_relation(func_decl * pred, relation_base * rel) {
         SASSERT(rel);
-        relation_map::entry * e = m_relations.insert_if_not_there2(pred, 0);
+        relation_map::obj_map_entry * e = m_relations.insert_if_not_there2(pred, 0);
         if (e->get_data().m_value) {
             e->get_data().m_value->deallocate();
         }
@@ -119,35 +116,25 @@ namespace datalog {
     }
 
     void relation_manager::collect_non_empty_predicates(decl_set & res) const {
-        relation_map::iterator it = m_relations.begin();
-        relation_map::iterator end = m_relations.end();
-        for(; it!=end; ++it) {
-            if(!it->m_value->empty()) {
-                res.insert(it->m_key);
+        for (auto const& kv : m_relations) {
+            if (!kv.m_value->fast_empty()) {
+                res.insert(kv.m_key);
             }
         }
     }
 
     void relation_manager::restrict_predicates(const decl_set & preds) {
-        typedef ptr_vector<func_decl> fd_vector;
-        fd_vector to_remove;
+        ptr_vector<func_decl> to_remove;
 
-        relation_map::iterator rit = m_relations.begin();
-        relation_map::iterator rend = m_relations.end();
-        for(; rit!=rend; ++rit) {
-            func_decl * pred = rit->m_key;
+        for (auto const& kv : m_relations) {
+            func_decl* pred = kv.m_key;
             if (!preds.contains(pred)) {
                 to_remove.insert(pred);
             }
         }
 
-        fd_vector::iterator pit = to_remove.begin();
-        fd_vector::iterator pend = to_remove.end();
-        for(; pit!=pend; ++pit) {
-            func_decl * pred = *pit;
-            relation_base * rel;
-            VERIFY( m_relations.find(pred, rel) );
-            rel->deallocate();
+        for (func_decl* pred : to_remove) {
+            m_relations.find(pred)->deallocate();
             m_relations.remove(pred);
             get_context().get_manager().dec_ref(pred);
         }
@@ -206,6 +193,7 @@ namespace datalog {
     }
 
     void relation_manager::register_relation_plugin_impl(relation_plugin * plugin) {
+        TRACE("dl", tout << "register: " << plugin->get_name() << "\n";);
         m_relation_plugins.push_back(plugin);
         plugin->initialize(get_next_relation_fid(*plugin));
         if (plugin->get_name() == get_context().default_relation()) {
@@ -276,24 +264,22 @@ namespace datalog {
     relation_plugin & relation_manager::get_relation_plugin(family_id kind) {
         SASSERT(kind>=0);
         SASSERT(kind<m_next_relation_fid);
-        relation_plugin * res;
+        relation_plugin * res = 0;
         VERIFY(m_kind2plugin.find(kind, res));
         return *res;
     }
 
     table_plugin * relation_manager::get_table_plugin(symbol const& k) {
-        table_plugin_vector::iterator tpit = m_table_plugins.begin();
-        table_plugin_vector::iterator tpend = m_table_plugins.end();
-        for(; tpit!=tpend; ++tpit) {
-            if((*tpit)->get_name()==k) {
-                return *tpit;
+        for (table_plugin * tp : m_table_plugins) {
+            if (tp->get_name()==k) {
+                return tp;
             }
         }
         return 0;
     }
 
     table_relation_plugin & relation_manager::get_table_relation_plugin(table_plugin & tp) {
-        table_relation_plugin * res;
+        table_relation_plugin * res = 0;
         VERIFY( m_table_relation_plugins.find(&tp, res) );
         return *res;
     }
@@ -340,19 +326,21 @@ namespace datalog {
             return res;
         }
 
-        for (unsigned i = 0; i < m_relation_plugins.size(); ++i) {
-            p = m_relation_plugins[i];
-            if (p->can_handle_signature(s)) {
-                return p->mk_empty(s);
+        for (relation_plugin* p1 : m_relation_plugins) {
+            if (p1->can_handle_signature(s)) {
+                return p1->mk_empty(s);
             }
         }
 
         //If there is no plugin to handle the signature, we just create an empty product relation and
         //stuff will be added to it by later operations.
+        TRACE("dl", s.output(get_context().get_manager(), tout << "empty product relation"); tout << "\n";);
         return product_relation_plugin::get_plugin(*this).mk_empty(s);
     }
 
-
+    /**
+      The newly created object takes ownership of the \c table object.
+    */
     relation_base * relation_manager::mk_table_relation(const relation_signature & s, table_base * table) {
         SASSERT(s.size()==table->get_signature().size());
         return get_table_relation_plugin(table->get_plugin()).mk_from_table(s, table);
@@ -459,12 +447,6 @@ namespace datalog {
             }
     }
 
-    void relation_manager::set_cancel(bool f) {
-        for (unsigned i = 0; i < m_relation_plugins.size(); ++i) {
-            m_relation_plugins[i]->set_cancel(f);
-        }
-    }
-
     std::string relation_manager::to_nice_string(const relation_element & el) const {
         uint64 val;
         std::stringstream stm;
@@ -490,7 +472,9 @@ namespace datalog {
     }
 
     std::string relation_manager::to_nice_string(const relation_sort & s) const {
-        return std::string(s->get_name().bare_str());
+        std::ostringstream strm;
+        strm << mk_pp(s, get_context().get_manager());
+        return strm.str();
     }
 
     std::string relation_manager::to_nice_string(const relation_signature & s) const {
@@ -537,7 +521,7 @@ namespace datalog {
         for(; it!=end; ++it) {
             func_decl * pred = *it;
             relation_base * rel = try_get_relation(pred);
-            if(!rel) {
+            if (!rel) {
                 out << "Tuples in " << pred->get_name() << ": \n";
                 continue;
             }
@@ -668,6 +652,27 @@ namespace datalog {
         return res;
     }
 
+    class relation_manager::default_relation_apply_sequential_fn : public relation_mutator_fn {
+        ptr_vector<relation_mutator_fn> m_mutators;
+    public:
+        default_relation_apply_sequential_fn(unsigned n, relation_mutator_fn ** mutators):
+            m_mutators(n, mutators) {            
+        }
+        virtual ~default_relation_apply_sequential_fn() {
+            std::for_each(m_mutators.begin(), m_mutators.end(), delete_proc<relation_mutator_fn>());
+        }
+        
+        virtual void operator()(relation_base& t) {
+            for (unsigned i = 0; i < m_mutators.size(); ++i) {
+                if (t.empty()) return;
+                (*(m_mutators[i]))(t);
+            }
+        }
+    };
+
+    relation_mutator_fn * relation_manager::mk_apply_sequential_fn(unsigned n, relation_mutator_fn ** mutators) {
+        return alloc(default_relation_apply_sequential_fn, n, mutators);
+    }
 
     class relation_manager::default_relation_join_project_fn : public relation_join_fn {
         scoped_ptr<relation_join_fn> m_join;
@@ -733,8 +738,7 @@ namespace datalog {
 
 
     relation_union_fn * relation_manager::mk_union_fn(const relation_base & tgt, const relation_base & src, 
-            const relation_base * delta) { 
-        TRACE("dl", tout << src.get_plugin().get_name() << " " << tgt.get_plugin().get_name() << "\n";); 
+            const relation_base * delta) {         
         relation_union_fn * res = tgt.get_plugin().mk_union_fn(tgt, src, delta);
         if(!res && &tgt.get_plugin()!=&src.get_plugin()) {
             res = src.get_plugin().mk_union_fn(tgt, src, delta);
@@ -742,6 +746,7 @@ namespace datalog {
         if(!res && delta && &tgt.get_plugin()!=&delta->get_plugin() && &src.get_plugin()!=&delta->get_plugin()) {
             res = delta->get_plugin().mk_union_fn(tgt, src, delta);
         }
+        // TRACE("dl", tout << src.get_plugin().get_name() << " " << tgt.get_plugin().get_name() << " " << (res?"created":"not created") << "\n";); 
         return res;
     }
 
@@ -997,7 +1002,6 @@ namespace datalog {
         }
         return res;
     }
-
 
     class relation_manager::auxiliary_table_transformer_fn {
         table_fact m_row;
@@ -1385,7 +1389,7 @@ namespace datalog {
         dl_decl_util & m_decl_util;
         th_rewriter & m_simp;
         app_ref m_condition;
-        ptr_vector<sort> m_var_sorts;
+        expr_free_vars m_free_vars;
         expr_ref_vector m_args;
     public:
         default_table_filter_interpreted_fn(context & ctx, unsigned col_cnt,  app* condition) 
@@ -1395,8 +1399,7 @@ namespace datalog {
                   m_simp(ctx.get_rewriter()),
                   m_condition(condition, ctx.get_manager()),
                   m_args(ctx.get_manager()) {
-            m_var_sorts.resize(col_cnt);
-            get_free_vars(m_condition, m_var_sorts);
+            m_free_vars(m_condition);
         }
 
         virtual bool should_remove(const table_fact & f) const {
@@ -1406,14 +1409,13 @@ namespace datalog {
             //arguments need to be in reverse order for the substitution
             unsigned col_cnt = f.size();
             for(int i=col_cnt-1;i>=0;i--) {
-                sort * var_sort = m_var_sorts[i];
-                if(!var_sort) {
+                if(!m_free_vars.contains(i)) {
                     args.push_back(0);
                     continue; //this variable does not occur in the condition;
                 }
 
                 table_element el = f[i];
-                args.push_back(m_decl_util.mk_numeral(el, var_sort));
+                args.push_back(m_decl_util.mk_numeral(el, m_free_vars[i]));
             }
 
             expr_ref ground(m_ast_manager);
@@ -1604,6 +1606,8 @@ namespace datalog {
             m_union_fn = plugin.mk_union_fn(t, *m_aux_table, static_cast<table_base *>(0));
         }
 
+        virtual ~default_table_map_fn() {}
+
         virtual void operator()(table_base & t) {
             SASSERT(t.get_signature()==m_aux_table->get_signature());
             if(!m_aux_table->empty()) {
@@ -1659,6 +1663,8 @@ namespace datalog {
             m_row.resize(get_result_signature().size());
             m_former_row.resize(get_result_signature().size());
         }
+
+        virtual ~default_table_project_with_reduce_fn() {}
 
         virtual void modify_fact(table_fact & f) const {
             unsigned ofs=1;

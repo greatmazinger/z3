@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _QFNRA_TACTIC_
-#define _QFNRA_TACTIC_
+#ifndef QFNRA_TACTIC_H_
+#define QFNRA_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

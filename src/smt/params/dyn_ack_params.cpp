@@ -16,8 +16,8 @@ Author:
 Revision History:
 
 --*/
-#include"dyn_ack_params.h"
-#include"smt_params_helper.hpp"
+#include "smt/params/dyn_ack_params.h"
+#include "smt/params/smt_params_helper.hpp"
 
 void dyn_ack_params::updt_params(params_ref const & _p) {
     smt_params_helper p(_p);
@@ -27,4 +27,15 @@ void dyn_ack_params::updt_params(params_ref const & _p) {
     m_dack_threshold = p.dack_threshold();
     m_dack_gc = p.dack_gc();
     m_dack_gc_inv_decay = p.dack_gc_inv_decay();
+}
+
+#define DISPLAY_PARAM(X) out << #X"=" << X << std::endl;
+
+void dyn_ack_params::display(std::ostream & out) const {
+    DISPLAY_PARAM(m_dack);
+    DISPLAY_PARAM(m_dack_eq);
+    DISPLAY_PARAM(m_dack_factor);
+    DISPLAY_PARAM(m_dack_threshold);
+    DISPLAY_PARAM(m_dack_gc);
+    DISPLAY_PARAM(m_dack_gc_inv_decay);
 }

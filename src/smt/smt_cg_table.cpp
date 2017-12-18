@@ -16,9 +16,9 @@ Author:
 Revision History:
 
 --*/
-#include"smt_cg_table.h"
-#include"ast_pp.h"
-#include"ast_ll_pp.h"
+#include "smt/smt_cg_table.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_ll_pp.h"
 
 namespace smt {
 
@@ -127,7 +127,7 @@ namespace smt {
         switch (i) {
         case 2:
             b += n->get_arg(1)->get_root()->hash();
-            __fallthrough;
+            Z3_fallthrough;
         case 1:
             c += n->get_arg(0)->get_root()->hash();
         }

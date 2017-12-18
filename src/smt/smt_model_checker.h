@@ -18,14 +18,15 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_MODEL_CHECKER_H_
-#define _SMT_MODEL_CHECKER_H_
+#ifndef SMT_MODEL_CHECKER_H_
+#define SMT_MODEL_CHECKER_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
-#include"qi_params.h"
-#include"smt_params.h"
-#include"region.h"
+#include "ast/ast.h"
+#include "ast/array_decl_plugin.h"
+#include "util/obj_hashtable.h"
+#include "smt/params/qi_params.h"
+#include "smt/params/smt_params.h"
+#include "util/region.h"
 
 class proto_model;
 class model;
@@ -37,9 +38,10 @@ namespace smt {
     class quantifier_manager;
 
     class model_checker {
-        ast_manager &                               m_manager;
+        ast_manager &                               m; // _manager;
         qi_params const &                           m_params;
-        // copy of smt_params for auxiliary context. 
+        array_util                                  m_autil;
+        // copy of smt_params for auxiliary context.
         // the idea is to use a different configuration for the aux context (e.g., disable relevancy)
         scoped_ptr<smt_params>                      m_fparams;
         quantifier_manager *                        m_qm;
@@ -59,7 +61,9 @@ namespace smt {
         void assert_neg_q_m(quantifier * q, expr_ref_vector & sks);
         bool add_blocking_clause(model * cex, expr_ref_vector & sks);
         bool check(quantifier * q);
-        
+        bool check_rec_fun(quantifier* q, bool strict_rec_fun);
+        void check_quantifiers(bool strict_rec_fun, bool& found_relevant, unsigned& num_failures);
+
         struct instance {
             quantifier * m_q;
             unsigned     m_generation;
@@ -71,13 +75,18 @@ namespace smt {
         };
 
         region                                     m_new_instances_region;
-        expr_ref_vector                            m_new_instances_bindings;
         ptr_vector<instance>                       m_new_instances;
+        expr_ref_vector                            m_pinned_exprs;
         bool add_instance(quantifier * q, model * cex, expr_ref_vector & sks, bool use_inv);
         void reset_new_instances();
         void assert_new_instances();
 
         quantifier * get_flat_quantifier(quantifier * q);
+
+        struct is_model_value {};
+        expr_mark m_visited;
+        bool contains_model_value(expr * e);
+        void add_instance(quantifier * q, expr_ref_vector const & bindings, unsigned max_generation);
 
     public:
         model_checker(ast_manager & m, qi_params const & p, model_finder & mf);
@@ -92,6 +101,9 @@ namespace smt {
         void restart_eh();
 
         void reset();
+
+        void operator()(expr* e);
+
     };
 };
 

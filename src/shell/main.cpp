@@ -18,24 +18,27 @@ Revision History:
 
 --*/
 #include<iostream>
-#include"memory_manager.h"
-#include"trace.h"
-#include"debug.h"
-#include"util.h"
-#include"pp.h"
-#include"smtlib_frontend.h"
-#include"z3_log_frontend.h"
-#include"warning.h"
-#include"version.h"
-#include"dimacs_frontend.h"
-#include"datalog_frontend.h"
-#include"timeout.h"
-#include"z3_exception.h"
-#include"error_codes.h"
-#include"gparams.h"
-#include"env_params.h"
+#include "util/memory_manager.h"
+#include "util/trace.h"
+#include "util/debug.h"
+#include "util/util.h"
+#include "ast/pp.h"
+#include "shell/smtlib_frontend.h"
+#include "shell/z3_log_frontend.h"
+#include "util/warning.h"
+#include "util/version.h"
+#include "shell/dimacs_frontend.h"
+#include "shell/datalog_frontend.h"
+#include "shell/opt_frontend.h"
+#include "util/timeout.h"
+#include "util/z3_exception.h"
+#include "util/error_codes.h"
+#include "util/gparams.h"
+#include "util/env_params.h"
+#include "util/file_path.h"
+#include "shell/lp_frontend.h"
 
-typedef enum { IN_UNSPECIFIED, IN_SMTLIB, IN_SMTLIB_2, IN_DATALOG, IN_DIMACS, IN_Z3_LOG } input_kind;
+typedef enum { IN_UNSPECIFIED, IN_SMTLIB_2, IN_DATALOG, IN_DIMACS, IN_WCNF, IN_OPB, IN_Z3_LOG, IN_MPS } input_kind;
 
 std::string         g_aux_input_file;
 char const *        g_input_file          = 0;
@@ -65,7 +68,7 @@ void display_usage() {
 #ifdef Z3GITHASH
     std::cout << " - build hashcode " << STRINGIZE_VALUE_OF(Z3GITHASH);
 #endif
-    std::cout << "]. (C) Copyright 2006-2014 Microsoft Corp.\n";
+    std::cout << "]. (C) Copyright 2006-2016 Microsoft Corp.\n";
     std::cout << "Usage: z3 [options] [-file:]file\n";
     std::cout << "\nInput format:\n";
     std::cout << "  -smt        use parser for SMT input format.\n";
@@ -153,20 +156,37 @@ void parse_cmd_line_args(int argc, char ** argv) {
                 exit(0);
             }
             if (strcmp(opt_name, "version") == 0) {
-                std::cout << "Z3 version " << Z3_MAJOR_VERSION << "." << Z3_MINOR_VERSION << "." << Z3_BUILD_NUMBER << "\n";
+                std::cout << "Z3 version " << Z3_MAJOR_VERSION << "." << Z3_MINOR_VERSION << "." << Z3_BUILD_NUMBER;
+                std::cout << " - ";
+#ifdef _AMD64_
+                std::cout << "64";
+#else
+                std::cout << "32";
+#endif
+                std::cout << " bit";
+#ifdef Z3GITHASH
+                std::cout << " - build hashcode " << STRINGIZE_VALUE_OF(Z3GITHASH);
+#endif
+                std::cout << "\n";
                 exit(0);
-            }
-            else if (strcmp(opt_name, "smt") == 0) {
-                g_input_kind = IN_SMTLIB;
             }
             else if (strcmp(opt_name, "smt2") == 0) {
                 g_input_kind = IN_SMTLIB_2;
+            }
+            else if (strcmp(opt_name, "dl") == 0) {
+                g_input_kind = IN_DATALOG;
             }
             else if (strcmp(opt_name, "in") == 0) {
                 g_standard_input = true;
             }
             else if (strcmp(opt_name, "dimacs") == 0) {
                 g_input_kind = IN_DIMACS;
+            }
+            else if (strcmp(opt_name, "wcnf") == 0) {
+                g_input_kind = IN_WCNF;
+            }
+            else if (strcmp(opt_name, "bpo") == 0) {
+                g_input_kind = IN_OPB;
             }
             else if (strcmp(opt_name, "log") == 0) {
                 g_input_kind = IN_Z3_LOG;
@@ -267,21 +287,8 @@ void parse_cmd_line_args(int argc, char ** argv) {
     }
 }
 
-char const * get_extension(char const * file_name) {
-    if (file_name == 0)
-        return 0;
-    char const * last_dot = 0;
-    for (;;) {
-        char const * tmp = strchr(file_name, '.');
-        if (tmp == 0) {
-            return last_dot;
-        }
-        last_dot  = tmp + 1;
-        file_name = last_dot;
-    }
-}
 
-int main(int argc, char ** argv) {
+int STD_CALL main(int argc, char ** argv) {
     try{
         unsigned return_value = 0;
         memory::initialize(0);
@@ -306,21 +313,25 @@ int main(int argc, char ** argv) {
                 else if (strcmp(ext, "dimacs") == 0 || strcmp(ext, "cnf") == 0) {
                     g_input_kind = IN_DIMACS;
                 }
+                else if (strcmp(ext, "wcnf") == 0) {
+                    g_input_kind = IN_WCNF;
+                }
+                else if (strcmp(ext, "opb") == 0) {
+                    g_input_kind = IN_OPB;
+                }
                 else if (strcmp(ext, "log") == 0) {
                     g_input_kind = IN_Z3_LOG;
                 }
                 else if (strcmp(ext, "smt2") == 0) {
                     g_input_kind = IN_SMTLIB_2;
                 }
-                else if (strcmp(ext, "smt") == 0) {
-                    g_input_kind = IN_SMTLIB;
+                else if (strcmp(ext, "mps") == 0 || strcmp(ext, "sif") == 0 ||
+                         strcmp(ext, "MPS") == 0 || strcmp(ext, "SIF") == 0) {
+                    g_input_kind = IN_MPS;
                 }
             }
-	}
+    }
         switch (g_input_kind) {
-        case IN_SMTLIB:
-            return_value = read_smtlib_file(g_input_file);
-            break;
         case IN_SMTLIB_2:
             memory::exit_when_out_of_memory(true, "(error \"out of memory\")");
             return_value = read_smtlib2_commands(g_input_file);
@@ -328,16 +339,25 @@ int main(int argc, char ** argv) {
         case IN_DIMACS:
             return_value = read_dimacs(g_input_file);
             break;
+        case IN_WCNF:
+            return_value = parse_opt(g_input_file, true);
+            break;
+        case IN_OPB:
+            return_value = parse_opt(g_input_file, false);
+            break;
         case IN_DATALOG:
             read_datalog(g_input_file);
             break;
         case IN_Z3_LOG:
             replay_z3_log(g_input_file);
             break;
+        case IN_MPS:
+            return_value = read_mps_file(g_input_file);
+            break;
         default:
             UNREACHABLE();
         }
-		memory::finalize();
+        memory::finalize();
 #ifdef _WINDOWS
         _CrtDumpMemoryLeaks();
 #endif

@@ -17,10 +17,10 @@ Notes:
 
 
 --*/
-#ifndef _QFFP_TACTIC_H_
-#define _QFFP_TACTIC_H_
+#ifndef QFFP_TACTIC_H_
+#define QFFP_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

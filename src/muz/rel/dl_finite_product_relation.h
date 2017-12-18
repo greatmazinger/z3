@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_FINITE_PRODUCT_RELATION_H_
-#define _DL_FINITE_PRODUCT_RELATION_H_
+#ifndef DL_FINITE_PRODUCT_RELATION_H_
+#define DL_FINITE_PRODUCT_RELATION_H_
 
 
-#include "dl_base.h"
-#include "dl_relation_manager.h"
-#include "dl_table_relation.h"
+#include "muz/rel/dl_base.h"
+#include "muz/rel/dl_relation_manager.h"
+#include "muz/rel/dl_table_relation.h"
 
 namespace datalog {
 
@@ -362,5 +362,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_FINITE_PRODUCT_RELATION_H_ */
+#endif /* DL_FINITE_PRODUCT_RELATION_H_ */
 

@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _FORMAT_H_
-#define _FORMAT_H_
+#ifndef FORMAT_H_
+#define FORMAT_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 namespace format_ns {
     typedef app format;
@@ -193,5 +193,5 @@ namespace format_ns {
   
 };
 
-#endif /* _FORMAT_H_ */
+#endif /* FORMAT_H_ */
 

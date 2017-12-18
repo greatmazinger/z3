@@ -16,9 +16,9 @@ Author:
 Notes:
 
 --*/
-#include"rewriter_def.h"
-#include"ast_ll_pp.h"
-#include"ast_smt2_pp.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/ast_ll_pp.h"
+#include "ast/ast_smt2_pp.h"
 
 void rewriter_core::init_cache_stack() {
     SASSERT(m_cache_stack.empty());
@@ -50,6 +50,8 @@ void rewriter_core::cache_result(expr * k, expr * v) {
     SASSERT(!m_proof_gen);
     
     TRACE("rewriter_cache_result", tout << mk_ismt2_pp(k, m()) << "\n--->\n" << mk_ismt2_pp(v, m()) << "\n";);
+
+    SASSERT(m().get_sort(k) == m().get_sort(v));
 
     m_cache->insert(k, v);
 #if 0
@@ -171,6 +173,7 @@ void rewriter_core::elim_reflex_prs(unsigned spos) {
 rewriter_core::rewriter_core(ast_manager & m, bool proof_gen):
     m_manager(m),
     m_proof_gen(proof_gen),
+    m_cancel_check(true),
     m_result_stack(m),
     m_result_pr_stack(m),
     m_num_qvars(0) {

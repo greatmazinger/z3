@@ -17,20 +17,22 @@ Author:
 Revision History:
 
 --*/
-#ifndef _NLSAT_EVALUATOR_H_
-#define _NLSAT_EVALUATOR_H_
+#ifndef NLSAT_EVALUATOR_H_
+#define NLSAT_EVALUATOR_H_
 
-#include"nlsat_types.h"
-#include"nlsat_assignment.h"
-#include"nlsat_interval_set.h"
+#include "nlsat/nlsat_types.h"
+#include "nlsat/nlsat_assignment.h"
+#include "nlsat/nlsat_interval_set.h"
 
 namespace nlsat {
+
+    class solver;
 
     class evaluator {
         struct imp;
         imp *  m_imp;
     public:
-        evaluator(assignment const & x2v, pmanager & pm, small_object_allocator & allocator);
+        evaluator(solver& s, assignment const & x2v, pmanager & pm, small_object_allocator & allocator);
         ~evaluator();
 
         interval_set_manager & ism() const;

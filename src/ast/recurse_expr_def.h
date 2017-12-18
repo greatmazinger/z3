@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _RECURSE_EXPR_DEF_H_
-#define _RECURSE_EXPR_DEF_H_
+#ifndef RECURSE_EXPR_DEF_H_
+#define RECURSE_EXPR_DEF_H_
 
-#include"recurse_expr.h"
+#include "ast/recurse_expr.h"
 
 template<typename T, typename Visitor, bool IgnorePatterns, bool CallDestructors>
 inline void recurse_expr<T, Visitor, IgnorePatterns, CallDestructors>::visit(expr * n, bool & visited) {
@@ -106,4 +106,4 @@ T recurse_expr<T, Visitor, IgnorePatterns, CallDestructors>::operator()(expr * r
     return get_cached(r);
 }
 
-#endif /* _RECURSE_EXPR_DEF_H_ */
+#endif /* RECURSE_EXPR_DEF_H_ */

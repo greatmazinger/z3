@@ -20,15 +20,15 @@ Revision History:
 --*/
 #include<sstream>
 #include<iomanip>
-#include"mpff.h"
-#include"mpn.h"
-#include"mpz.h"
-#include"mpq.h"
-#include"bit_util.h"
-#include"trace.h"
+#include "util/mpff.h"
+#include "util/mpn.h"
+#include "util/mpz.h"
+#include "util/mpq.h"
+#include "util/bit_util.h"
+#include "util/trace.h"
 
-COMPILE_TIME_ASSERT(sizeof(mpn_digit) == sizeof(unsigned));
-COMPILE_TIME_ASSERT(sizeof(unsigned)  == 4);
+static_assert(sizeof(mpn_digit) == sizeof(unsigned), "");
+static_assert(sizeof(unsigned)  == 4, "unsigned haven't changed size for a while");
 
 // MIN_MSW is an shorthand for 0x8000..00, i.e., the minimal most significand word.
 #define MIN_MSW (1u << (sizeof(unsigned) * 8 - 1))
@@ -255,7 +255,7 @@ void mpff_manager::set(mpff & n, int64 v) {
     }
     else {
         if (v < 0) {
-            set(n, static_cast<uint64>(-v));
+            set(n, 1 + static_cast<uint64>(-(1+v)));
             n.m_sign = 1;
         }
         else {
@@ -680,7 +680,7 @@ void mpff_manager::add_sub(bool is_sub, mpff const & a, mpff const & b, mpff & c
     
     // Make sure that a and b have the same exponent.
     if (exp_a > exp_b) {
-        unsigned shift = exp_a - exp_b;
+        unsigned shift = (unsigned)exp_a - (unsigned)exp_b;
         n_sig_b = m_buffers[0].c_ptr();
         shr(m_precision, sig_b, shift, m_precision, n_sig_b);
         if (sgn_b != m_to_plus_inf && has_one_at_first_k_bits(m_precision, sig_b, shift)) {
@@ -1395,6 +1395,7 @@ unsigned mpff_manager::prev_power_of_two(mpff const & a) {
 bool mpff_manager::check(mpff const & n) const {
     // n is zero or the most significand bit of the most significand word is 1.
     unsigned * s = sig(n);
+    (void)s;
     SASSERT(is_zero(n) || (s[m_precision - 1] & MIN_MSW) != 0);
     // if n is zero, then the sign must be 0
     SASSERT(!is_zero(n) || n.m_sign == 0);

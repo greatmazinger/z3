@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_CLAUSE_SET_H_
-#define _SAT_CLAUSE_SET_H_
+#ifndef SAT_CLAUSE_SET_H_
+#define SAT_CLAUSE_SET_H_
 
-#include"sat_clause.h"
+#include "sat/sat_clause.h"
 
 namespace sat {
 

@@ -16,9 +16,9 @@ Author:
 Revision History:
 
 --*/
-#include"smt_literal.h"
-#include"ast_pp.h"
-#include"ast_ll_pp.h"
+#include "smt/smt_literal.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_ll_pp.h"
 
 namespace smt {
 
@@ -27,6 +27,8 @@ namespace smt {
             out << "true";
         else if (*this == false_literal)
             out << "false";
+        else if (*this == null_literal)
+            out << "null";
         else if (sign())
             out << "(not " << mk_pp(bool_var2expr_map[var()], m) << ")";
         else
@@ -69,10 +71,10 @@ namespace smt {
         }
     }
 
-    void display_verbose(std::ostream & out, ast_manager& m, unsigned num_lits, literal const * lits, expr * const * bool_var2expr_map) {
+    void display_verbose(std::ostream & out, ast_manager& m, unsigned num_lits, literal const * lits, expr * const * bool_var2expr_map, char const* sep) {
         for (unsigned i = 0; i < num_lits; i++) {
             if (i > 0)
-                out << " ";
+                out << sep;
             lits[i].display(out, m, bool_var2expr_map);
         }
     }

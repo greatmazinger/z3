@@ -18,9 +18,10 @@ Author:
 Notes:
 
 --*/
-#include"solver.h"
-#include"scoped_timer.h"
-#include"combined_solver_params.hpp"
+#include "solver/solver.h"
+#include "util/scoped_timer.h"
+#include "solver/combined_solver_params.hpp"
+#include "util/common_msgs.h"
 #define PS_VB_LVL 15
 
 /**
@@ -83,9 +84,14 @@ private:
         solver *        m_solver;
         volatile bool   m_canceled;
         aux_timeout_eh(solver * s):m_solver(s), m_canceled(false) {}
-        virtual void operator()() {
-            m_solver->cancel();
-            m_canceled = true;
+        ~aux_timeout_eh() {
+            if (m_canceled) {                
+                m_solver->get_manager().limit().dec_cancel();
+            }
+        }
+        virtual void operator()(event_handler_caller_t caller_id) {
+            m_canceled = true;            
+            m_solver->get_manager().limit().inc_cancel();
         }
     };
 
@@ -95,6 +101,8 @@ private:
         m_ignore_solver1 = p.ignore_solver1();
         m_inc_unknown_behavior = static_cast<inc_unknown_behavior>(p.solver2_unknown());
     }
+
+    virtual ast_manager& get_manager() const { return m_solver1->get_manager(); }
 
     bool has_quantifiers() const {
         unsigned sz = get_num_assertions();
@@ -127,7 +135,19 @@ public:
         m_use_solver1_results = true;
     }
 
+    solver* translate(ast_manager& m, params_ref const& p) {
+        solver* s1 = m_solver1->translate(m, p);
+        solver* s2 = m_solver2->translate(m, p);
+        combined_solver* r = alloc(combined_solver, s1, s2, p);
+        r->m_solver2_initialized = m_solver2_initialized;
+        r->m_inc_mode = m_inc_mode;
+        r->m_check_sat_executed = m_check_sat_executed;
+        r->m_use_solver1_results = m_use_solver1_results;
+        return r;
+    }
+
     virtual void updt_params(params_ref const & p) {
+        solver::updt_params(p);
         m_solver1->updt_params(p);
         m_solver2->updt_params(p);
         updt_local_params(p);
@@ -176,57 +196,66 @@ public:
         return m_solver1->get_scope_level();
     }
 
+    virtual lbool get_consequences(expr_ref_vector const& asms, expr_ref_vector const& vars, expr_ref_vector& consequences) {
+        switch_inc_mode();
+        m_use_solver1_results = false;
+        try {
+            return m_solver2->get_consequences(asms, vars, consequences);
+        }
+        catch (z3_exception& ex) {
+            if (get_manager().canceled()) {
+                set_reason_unknown(Z3_CANCELED_MSG);
+            }
+            else {
+                set_reason_unknown(ex.msg());
+            }
+        }
+        return l_undef;
+    }
+
     virtual lbool check_sat(unsigned num_assumptions, expr * const * assumptions) {
-        m_check_sat_executed  = true;
-        
+        m_check_sat_executed  = true;        
+        m_use_solver1_results = false;
+
         if (get_num_assumptions() != 0 ||            
-            num_assumptions > 0 || // assumptions were provided
+            num_assumptions > 0 ||  // assumptions were provided            
             m_ignore_solver1)  {
             // must use incremental solver
             switch_inc_mode();
-            m_use_solver1_results = false;
             return m_solver2->check_sat(num_assumptions, assumptions);
         }
         
         if (m_inc_mode) {
             if (m_inc_timeout == UINT_MAX) {
                 IF_VERBOSE(PS_VB_LVL, verbose_stream() << "(combined-solver \"using solver 2 (without a timeout)\")\n";);            
-                lbool r = m_solver2->check_sat(0, 0);
-                if (r != l_undef || !use_solver1_when_undef()) {
-                    m_use_solver1_results = false;
+                lbool r = m_solver2->check_sat(num_assumptions, assumptions);
+                if (r != l_undef || !use_solver1_when_undef() || get_manager().canceled()) {
                     return r;
                 }
             }
             else {
                 IF_VERBOSE(PS_VB_LVL, verbose_stream() << "(combined-solver \"using solver 2 (with timeout)\")\n";);            
                 aux_timeout_eh eh(m_solver2.get());
-                lbool r;
-                {
+                lbool r = l_undef;
+                try {
                     scoped_timer timer(m_inc_timeout, &eh);
-                    r = m_solver2->check_sat(0, 0);
+                    r = m_solver2->check_sat(num_assumptions, assumptions);
+                }
+                catch (z3_exception&) {
+                    if (!eh.m_canceled) {
+                        throw;
+                    }
                 }
                 if ((r != l_undef || !use_solver1_when_undef()) && !eh.m_canceled) {
-                    m_use_solver1_results = false;
                     return r;
                 }
             }
-            IF_VERBOSE(PS_VB_LVL, verbose_stream() << "(combined-solver \"solver 2 failed, trying solver1\")\n";);                        
+            IF_VERBOSE(PS_VB_LVL, verbose_stream() << "(combined-solver \"solver 2 failed, trying solver1\")\n";);
         }
         
         IF_VERBOSE(PS_VB_LVL, verbose_stream() << "(combined-solver \"using solver 1\")\n";);
         m_use_solver1_results = true;
-        return m_solver1->check_sat(0, 0);
-    }
-
-    virtual void set_cancel(bool f) {
-        if (f) {
-            m_solver1->cancel();
-            m_solver2->cancel();
-        }
-        else {
-            m_solver1->reset_cancel();
-            m_solver2->reset_cancel();
-        }
+        return m_solver1->check_sat(num_assumptions, assumptions);
     }
     
     virtual void set_progress_callback(progress_callback * callback) {
@@ -252,15 +281,14 @@ public:
         return m_solver2->get_assumption(idx - c1);
     }
 
-    virtual void display(std::ostream & out) const {
-        m_solver1->display(out);
+    virtual std::ostream& display(std::ostream & out, unsigned n, expr* const* es) const {
+        return m_solver1->display(out, n, es);
     }
 
     virtual void collect_statistics(statistics & st) const {
+        m_solver2->collect_statistics(st);
         if (m_use_solver1_results)
             m_solver1->collect_statistics(st);
-        else
-            m_solver2->collect_statistics(st);
     }
 
     virtual void get_unsat_core(ptr_vector<expr> & r) {
@@ -289,6 +317,11 @@ public:
             return m_solver1->reason_unknown();
         else
             return m_solver2->reason_unknown();
+    }
+
+    virtual void set_reason_unknown(char const* msg) {
+        m_solver1->set_reason_unknown(msg);
+        m_solver2->set_reason_unknown(msg);
     }
 
     virtual void get_labels(svector<symbol> & r) {

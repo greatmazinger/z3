@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _MAP_H_
-#define _MAP_H_
+#ifndef MAP_H_
+#define MAP_H_
 
-#include"hashtable.h"
+#include "util/hashtable.h"
 
 template<typename Key, typename Value>
 struct _key_data {
@@ -108,6 +108,10 @@ public:
         m_table.insert(key_data(k, v));
     }
   
+    bool insert_if_not_there_core(key const & k, value const & v, entry *& et) {
+        return m_table.insert_if_not_there_core(key_data(k,v), et);
+    }
+
     key_data const & insert_if_not_there(key const & k, value const & v) {
         return m_table.insert_if_not_there(key_data(k, v));
     }
@@ -131,7 +135,7 @@ public:
     value const& get(key const& k, value const& default_value) const {
         entry* e = find_core(k);
         if (e) {
-	  return e->get_data().m_value;
+            return e->get_data().m_value;
         }
         else {
             return default_value;

@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_THEORY_VAR_LIST_H_
-#define _SMT_THEORY_VAR_LIST_H_
+#ifndef SMT_THEORY_VAR_LIST_H_
+#define SMT_THEORY_VAR_LIST_H_
 
-#include"smt_types.h"
+#include "smt/smt_types.h"
 
 namespace smt {
 
@@ -67,10 +67,10 @@ namespace smt {
     };
 
     // 32 bit machine
-    COMPILE_TIME_ASSERT(sizeof(expr*) != 4 || sizeof(theory_var_list) == sizeof(theory_var_list *) + sizeof(int)); 
+    static_assert(sizeof(expr*) != 4 || sizeof(theory_var_list) == sizeof(theory_var_list *) + sizeof(int), "32 bit"); 
     // 64 bit machine
-    COMPILE_TIME_ASSERT(sizeof(expr*) != 8 || sizeof(theory_var_list) == sizeof(theory_var_list *) + sizeof(int) + /* a structure must be aligned */ sizeof(int)); 
+    static_assert(sizeof(expr*) != 8 || sizeof(theory_var_list) == sizeof(theory_var_list *) + sizeof(int) + /* a structure must be aligned */ sizeof(int), "64 bit"); 
 };
 
-#endif /* _SMT_THEORY_VAR_LIST_H_ */
+#endif /* SMT_THEORY_VAR_LIST_H_ */
 

@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _OBJ_PAIR_HASHTABLE_H_
-#define _OBJ_PAIR_HASHTABLE_H_
+#ifndef OBJ_PAIR_HASHTABLE_H_
+#define OBJ_PAIR_HASHTABLE_H_
 
-#include"hash.h"
-#include"hashtable.h"
+#include "util/hash.h"
+#include "util/hashtable.h"
 
 /**
    \brief Special entry for a hashtable of pairs of obj pointers (i.e.,
@@ -170,5 +170,5 @@ public:
     }
 };
 
-#endif /* _OBJ_PAIR_HASHTABLE_H_ */
+#endif /* OBJ_PAIR_HASHTABLE_H_ */
 

@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _CLP_CONTEXT_H_
-#define _CLP_CONTEXT_H_
+#ifndef CLP_CONTEXT_H_
+#define CLP_CONTEXT_H_
 
-#include "ast.h"
-#include "lbool.h"
-#include "statistics.h"
-#include "dl_engine_base.h"
+#include "ast/ast.h"
+#include "util/lbool.h"
+#include "util/statistics.h"
+#include "muz/base/dl_engine_base.h"
 
 namespace datalog {
     class context;
@@ -34,8 +34,6 @@ namespace datalog {
         clp(context& ctx);
         ~clp();
         virtual lbool query(expr* query);
-        virtual void cancel();
-        virtual void cleanup();
         virtual void reset_statistics();
         virtual void collect_statistics(statistics& st) const;
         virtual void display_certificate(std::ostream& out) const;        

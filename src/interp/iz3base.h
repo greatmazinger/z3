@@ -21,8 +21,8 @@
 #ifndef IZ3BASE_H
 #define IZ3BASE_H
 
-#include "iz3mgr.h"
-#include "iz3scopes.h"
+#include "interp/iz3mgr.h"
+#include "interp/iz3scopes.h"
 
 namespace hash_space {
     template <>
@@ -66,35 +66,35 @@ class iz3base : public iz3mgr, public scopes {
 
     /** Constructor */
 
- iz3base(ast_manager &_m_manager,
-	 const std::vector<ast> &_cnsts,
-	 const std::vector<int> &_parents,
-	 const std::vector<ast> &_theory)
-     : iz3mgr(_m_manager), scopes(_parents)  {
+    iz3base(ast_manager &_m_manager,
+            const std::vector<ast> &_cnsts,
+            const std::vector<int> &_parents,
+            const std::vector<ast> &_theory)
+        : iz3mgr(_m_manager), scopes(_parents)  {
         initialize(_cnsts,_parents,_theory);
         weak = false;
     }
 
- iz3base(const iz3mgr& other,
-	 const std::vector<ast> &_cnsts,
-	 const std::vector<int> &_parents,
-	 const std::vector<ast> &_theory)
-     : iz3mgr(other), scopes(_parents)  {
+    iz3base(const iz3mgr& other,
+            const std::vector<ast> &_cnsts,
+            const std::vector<int> &_parents,
+            const std::vector<ast> &_theory)
+        : iz3mgr(other), scopes(_parents)  {
         initialize(_cnsts,_parents,_theory);
         weak = false;
     }
 
- iz3base(const iz3mgr& other,
-         const std::vector<std::vector<ast> > &_cnsts,
-	 const std::vector<int> &_parents,
-	 const std::vector<ast> &_theory)
-     : iz3mgr(other), scopes(_parents)  {
+    iz3base(const iz3mgr& other,
+            const std::vector<std::vector<ast> > &_cnsts,
+            const std::vector<int> &_parents,
+            const std::vector<ast> &_theory)
+        : iz3mgr(other), scopes(_parents)  {
         initialize(_cnsts,_parents,_theory);
         weak = false;
     }
 
- iz3base(const iz3mgr& other)
-     : iz3mgr(other), scopes()  {
+    iz3base(const iz3mgr& other)
+        : iz3mgr(other), scopes()  {
         weak = false;
     }
 
@@ -117,7 +117,7 @@ class iz3base : public iz3mgr, public scopes {
 
     /** Interpolator for clauses, to be implemented */
     virtual void interpolate_clause(std::vector<ast> &lits, std::vector<ast> &itps){
-        throw "no interpolator";
+        throw iz3_exception("no interpolator");
     }
 
     ast get_proof_check_assump(range &rng){
@@ -129,7 +129,7 @@ class iz3base : public iz3mgr, public scopes {
     int frame_of_assertion(const ast &ass){
         stl_ext::hash_map<ast,int>::iterator it = frame_map.find(ass);
         if(it == frame_map.end())
-            throw "unknown assertion";
+            throw iz3_exception("unknown assertion");
         return it->second;
     }
   

@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _AST_LL_PP_H_
-#define _AST_LL_PP_H_
+#ifndef AST_LL_PP_H_
+#define AST_LL_PP_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 #include<iostream>
 
 void ast_ll_pp(std::ostream & out, ast_manager & m, ast * n, bool only_exprs=true, bool compact=true);
@@ -53,5 +53,5 @@ inline std::ostream & operator<<(std::ostream & out, mk_bounded_pp const & p) {
 }
 
 
-#endif /* _AST_LL_PP_H_ */
+#endif /* AST_LL_PP_H_ */
 

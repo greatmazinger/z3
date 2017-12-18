@@ -16,14 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _TOTAL_ORDER_H_
-#define _TOTAL_ORDER_H_
+#ifndef TOTAL_ORDER_H_
+#define TOTAL_ORDER_H_
 
-#include"util.h"
-#include"small_object_allocator.h"
-#include"map.h"
-#include"uint_map.h"
-#include"trace.h"
+#include "util/util.h"
+#include "util/small_object_allocator.h"
+#include "util/map.h"
+#include "util/uint_map.h"
+#include "util/trace.h"
 
 /**
    \brief An object for maintaining a total-order on sets of T values.
@@ -79,12 +79,7 @@ class total_order {
     }
     
     cell * to_cell(T const & a) const {
-        void * r;
-#ifdef Z3DEBUG
-        bool ok =
-#endif
-        m_map.find(a, r);
-        SASSERT(ok);
+        void * r = m_map.find(a);
         return reinterpret_cast<cell*>(r);
     }
 
@@ -411,5 +406,5 @@ std::ostream & operator<<(std::ostream & out, total_order<T, Map> const & to) {
 }
 
 
-#endif /* _TOTAL_ORDER_H_ */
+#endif /* TOTAL_ORDER_H_ */
 

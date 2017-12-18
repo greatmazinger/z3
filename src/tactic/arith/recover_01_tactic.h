@@ -30,10 +30,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _RECOVER_01_TACTIC_H_
-#define _RECOVER_01_TACTIC_H_
+#ifndef RECOVER_01_TACTIC_H_
+#define RECOVER_01_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

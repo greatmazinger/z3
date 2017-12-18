@@ -16,16 +16,16 @@ Author:
 Revision History:
 
 --*/
-#ifndef _THEORY_FPA_H_
-#define _THEORY_FPA_H_
+#ifndef THEORY_FPA_H_
+#define THEORY_FPA_H_
 
-#include"smt_theory.h"
-#include"trail.h"
-#include"fpa2bv_converter.h"
-#include"fpa2bv_rewriter.h"
-#include"th_rewriter.h"
-#include"value_factory.h"
-#include"smt_model_generator.h"
+#include "smt/smt_theory.h"
+#include "util/trail.h"
+#include "ast/fpa/fpa2bv_converter.h"
+#include "ast/fpa/fpa2bv_rewriter.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "smt/proto_model/value_factory.h"
+#include "smt/smt_model_generator.h"
 
 namespace smt {
 
@@ -84,9 +84,9 @@ namespace smt {
             virtual void mk_const(func_decl * f, expr_ref & result);
             virtual void mk_rm_const(func_decl * f, expr_ref & result);
         };
-        
+
         class fpa_value_proc : public model_value_proc {
-        protected:            
+        protected:
             theory_fpa  & m_th;
             ast_manager & m;
             fpa_util    & m_fu;
@@ -96,10 +96,10 @@ namespace smt {
             unsigned m_sbits;
 
         public:
-            fpa_value_proc(theory_fpa * th, unsigned ebits, unsigned sbits) : 
+            fpa_value_proc(theory_fpa * th, unsigned ebits, unsigned sbits) :
                 m_th(*th), m(th->get_manager()), m_fu(th->m_fpa_util), m_bu(th->m_bv_util),
                 m_ebits(ebits), m_sbits(sbits) {}
-            
+
             virtual ~fpa_value_proc() {}
 
             void add_dependency(enode * e) { m_deps.push_back(model_value_dependency(e)); }
@@ -119,8 +119,8 @@ namespace smt {
             buffer<model_value_dependency> m_deps;
 
         public:
-            fpa_rm_value_proc(theory_fpa * th) : 
-                m_th(*th), m(th->get_manager()), m_fu(th->m_fpa_util), m_bu(th->m_bv_util) {}
+            fpa_rm_value_proc(theory_fpa * th) :
+                m_th(*th), m(th->get_manager()), m_fu(th->m_fpa_util), m_bu(th->m_bv_util) { (void) m_th; }
 
             void add_dependency(enode * e) { m_deps.push_back(model_value_dependency(e)); }
 
@@ -131,7 +131,7 @@ namespace smt {
             virtual ~fpa_rm_value_proc() {}
             virtual app * mk_value(model_generator & mg, ptr_vector<expr> & values);
         };
-    
+
     protected:
         fpa2bv_converter_wrapped  m_converter;
         fpa2bv_rewriter           m_rw;
@@ -141,9 +141,9 @@ namespace smt {
         fpa_util                & m_fpa_util;
         bv_util                 & m_bv_util;
         arith_util              & m_arith_util;
-        obj_map<sort, func_decl*> m_wraps;
-        obj_map<sort, func_decl*> m_unwraps;
         obj_map<expr, expr*>      m_conversions;
+        bool                      m_is_initialized;
+        obj_hashtable<func_decl>  m_is_added_to_model;
 
         virtual final_check_status final_check_eh();
         virtual bool internalize_atom(app * atom, bool gate_ctx);
@@ -154,19 +154,21 @@ namespace smt {
         virtual void push_scope_eh();
         virtual void pop_scope_eh(unsigned num_scopes);
         virtual void reset_eh();
-        virtual theory* mk_fresh(context*) { return alloc(theory_fpa, get_manager()); }
-        virtual char const * get_name() const { return "fpa"; }        
+        virtual theory* mk_fresh(context* new_ctx);
+        virtual char const * get_name() const { return "fpa"; }
 
         virtual model_value_proc * mk_value(enode * n, model_generator & mg);
-        
+
         void assign_eh(bool_var v, bool is_true);
         virtual void relevant_eh(app * n);
         virtual void init_model(model_generator & m);
         virtual void finalize_model(model_generator & mg);
 
     public:
-        theory_fpa(ast_manager& m);
+        theory_fpa(ast_manager & m);
         virtual ~theory_fpa();
+
+        virtual void init(context * ctx);
 
         virtual void display(std::ostream & out) const;
 
@@ -176,17 +178,14 @@ namespace smt {
         expr_ref convert_atom(expr * e);
         expr_ref convert_term(expr * e);
         expr_ref convert_conversion_term(expr * e);
-        expr_ref convert_unwrap(expr * e);
-        
-        void add_trail(ast * a);
 
         void attach_new_th_var(enode * n);
         void assert_cnstr(expr * e);
 
         app_ref wrap(expr * e);
-        app_ref unwrap(expr * e, sort * s);        
+        app_ref unwrap(expr * e, sort * s);
     };
 
 };
 
-#endif /* _THEORY_FPA_H_ */
+#endif /* THEORY_FPA_H_ */

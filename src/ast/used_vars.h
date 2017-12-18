@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _USED_VARS_H_
-#define _USED_VARS_H_
+#ifndef USED_VARS_H_
+#define USED_VARS_H_
 
-#include"ast.h"
-#include"expr_delta_pair.h"
+#include "ast/ast.h"
+#include "ast/expr_delta_pair.h"
 
 class used_vars {
     ptr_vector<sort> m_found_vars;
@@ -55,5 +55,5 @@ public:
     unsigned get_num_vars() const;
 };
 
-#endif /* _USED_VARS_H_ */
+#endif /* USED_VARS_H_ */
 

@@ -22,8 +22,8 @@
 
 #include <set>
 
-#include "iz3base.h"
-#include "iz3secondary.h"
+#include "interp/iz3base.h"
+#include "interp/iz3secondary.h"
 
 // #define CHECK_PROOFS
 
@@ -57,7 +57,9 @@ class iz3proof {
     typedef prover::ast ast;
 
     /** Object thrown in case of a proof error. */
-    struct proof_error {};
+    struct proof_error: public iz3_exception {
+        proof_error(): iz3_exception("proof_error") {}
+    };
 
     /* Null proof node */
     static const node null = -1;

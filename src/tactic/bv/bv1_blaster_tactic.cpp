@@ -22,12 +22,13 @@ Author:
 Notes:
 
 --*/
-#include"tactical.h"
-#include"bit_blaster_model_converter.h"
-#include"bv_decl_plugin.h"
-#include"rewriter_def.h"
-#include"for_each_expr.h"
-#include"cooperate.h"
+#include "tactic/tactical.h"
+#include "tactic/bv/bit_blaster_model_converter.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "ast/for_each_expr.h"
+#include "util/cooperate.h"
+#include "ast/rewriter/bv_rewriter.h"
 
 class bv1_blaster_tactic : public tactic {
 
@@ -376,9 +377,6 @@ class bv1_blaster_tactic : public tactic {
         
         ast_manager & m() const { return m_rw.m(); }
         
-        void set_cancel(bool f) {
-            m_rw.set_cancel(f);
-        }
         
         void operator()(goal_ref const & g, 
                         goal_ref_buffer & result, 
@@ -466,10 +464,7 @@ public:
     
     virtual void cleanup() {
         imp * d = alloc(imp, m_imp->m(), m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);        
         dealloc(d);
     }
     
@@ -477,11 +472,6 @@ public:
         return m_imp->get_num_steps();
     }
     
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_bv1_blaster_tactic(ast_manager & m, params_ref const & p) {

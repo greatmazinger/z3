@@ -18,10 +18,10 @@ Revision History:
     Extracted from dl_context
 
 --*/
-#ifndef _DL_TRANSFORMS_H_
-#define _DL_TRANSFORMS_H_
+#ifndef DL_TRANSFORMS_H_
+#define DL_TRANSFORMS_H_
 
-#include "dl_context.h"
+#include "muz/base/dl_context.h"
 
 namespace datalog {
     void apply_default_transformation(context& ctx);

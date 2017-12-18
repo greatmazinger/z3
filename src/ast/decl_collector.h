@@ -17,10 +17,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_DECL_COLLECTOR_H_
-#define _SMT_DECL_COLLECTOR_H_
+#ifndef SMT_DECL_COLLECTOR_H_
+#define SMT_DECL_COLLECTOR_H_
 
-#include"ast.h"
+#include "ast/ast.h"
+#include "ast/datatype_decl_plugin.h"
 
 class decl_collector {
     ast_manager &         m_manager;
@@ -28,9 +29,10 @@ class decl_collector {
     ptr_vector<sort>      m_sorts;
     ptr_vector<func_decl> m_decls;
     ptr_vector<func_decl> m_preds;
-    ast_mark m_visited;
-    family_id m_basic_fid;
-    family_id m_dt_fid;
+    ast_mark              m_visited;
+    family_id             m_basic_fid;
+    family_id             m_dt_fid;
+    datatype_util         m_dt_util;
 
     void visit_sort(sort* n);
     bool is_bool(sort* s);
@@ -43,6 +45,8 @@ public:
     ast_manager & m() { return m_manager; }
 
     void visit(ast * n);
+    void visit(unsigned n, expr* const* es);
+    void visit(expr_ref_vector const& es);
 
     unsigned get_num_sorts() const { return m_sorts.size(); }
     unsigned get_num_decls() const { return m_decls.size(); }

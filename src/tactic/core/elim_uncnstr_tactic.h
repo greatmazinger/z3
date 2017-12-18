@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _ELIM_UNCNSTR_TACTIC_H_
-#define _ELIM_UNCNSTR_TACTIC_H_
+#ifndef ELIM_UNCNSTR_TACTIC_H_
+#define ELIM_UNCNSTR_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 
 class tactic;
 class ast_manager;

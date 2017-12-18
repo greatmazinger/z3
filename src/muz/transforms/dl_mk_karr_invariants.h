@@ -16,14 +16,14 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_MK_KARR_INVARIANTS_H_
-#define _DL_MK_KARR_INVARIANTS_H_
+#ifndef DL_MK_KARR_INVARIANTS_H_
+#define DL_MK_KARR_INVARIANTS_H_
 
-#include"dl_context.h"
-#include"dl_rule_set.h"
-#include"dl_rule_transformer.h"
-#include"arith_decl_plugin.h"
-#include"hilbert_basis.h"
+#include "muz/base/dl_context.h"
+#include "muz/base/dl_rule_set.h"
+#include "muz/base/dl_rule_transformer.h"
+#include "ast/arith_decl_plugin.h"
+#include "math/hilbert/hilbert_basis.h"
 
 namespace datalog {
 
@@ -57,7 +57,6 @@ namespace datalog {
         arith_util      a;
         obj_map<func_decl, expr*>      m_fun2inv;
         ast_ref_vector m_pinned;
-        volatile bool  m_cancel;
 
         void get_invariants(rule_set const& src);
 
@@ -67,8 +66,6 @@ namespace datalog {
         mk_karr_invariants(context & ctx, unsigned priority);
 
         virtual ~mk_karr_invariants();
-
-        virtual void cancel();
         
         rule_set * operator()(rule_set const & source);
 
@@ -77,5 +74,5 @@ namespace datalog {
 
 };
 
-#endif /* _DL_MK_KARR_INVARIANTS_H_ */
+#endif /* DL_MK_KARR_INVARIANTS_H_ */
 

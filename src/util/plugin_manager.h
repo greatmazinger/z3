@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _PLUGIN_MANAGER_H_
-#define _PLUGIN_MANAGER_H_
+#ifndef PLUGIN_MANAGER_H_
+#define PLUGIN_MANAGER_H_
 
-#include"util.h"
+#include "util/util.h"
 
 template<typename Plugin>
 class plugin_manager {
@@ -62,5 +62,5 @@ public:
     }
 };
 
-#endif /* _PLUGIN_MANAGER_H_ */
+#endif /* PLUGIN_MANAGER_H_ */
 

@@ -17,10 +17,10 @@ Revision History:
 
 --*/
 
-#include"dl_mk_filter_rules.h"
-#include"dl_context.h"
-#include"for_each_expr.h"
-#include"ast_pp.h"
+#include "muz/transforms/dl_mk_filter_rules.h"
+#include "muz/base/dl_context.h"
+#include "ast/for_each_expr.h"
+#include "ast/ast_pp.h"
 
 namespace datalog {
 
@@ -79,13 +79,13 @@ namespace datalog {
 
         filter_key * key = alloc(filter_key, m);
         mk_new_rule_tail(m, pred, non_local_vars, filter_domain, key->filter_args, key->new_pred);
-        func_decl * filter_decl = 0;
-        if (!m_tail2filter.find(key, filter_decl)) {
+        filter_cache::obj_map_entry *entry = m_tail2filter.insert_if_not_there2(key, 0);
+        func_decl*& filter_decl = entry->get_data().m_value;
+        if (!filter_decl) {
             filter_decl = m_context.mk_fresh_head_predicate(pred->get_decl()->get_name(), symbol("filter"), 
                 filter_domain.size(), filter_domain.c_ptr(), pred->get_decl());
 
             m_pinned.push_back(filter_decl);
-            m_tail2filter.insert(key, filter_decl);
             app_ref filter_head(m);
             filter_head = m.mk_app(filter_decl, key->filter_args.size(), key->filter_args.c_ptr());
             app * filter_tail = key->new_pred;
@@ -111,7 +111,7 @@ namespace datalog {
         bool rule_modified = false;
         for (unsigned i = 0; i < sz; i++) {
             app * tail = r->get_tail(i);
-            if (is_candidate(tail)) {
+            if (is_candidate(tail) && !r->is_neg_tail(i)) {
                 TRACE("mk_filter_rules", tout << "is_candidate: " << mk_pp(tail, m) << "\n";);
                 var_idx_set non_local_vars = rm.collect_rule_vars_ex(r, tail);
                 func_decl * filter_decl = mk_filter_decl(tail, non_local_vars);
@@ -140,7 +140,7 @@ namespace datalog {
         if (rule_modified) {
             remove_duplicate_tails(new_tail, new_is_negated);
             SASSERT(new_tail.size() == new_is_negated.size());
-            rule * new_rule = m_context.get_rule_manager().mk(new_head, new_tail.size(), new_tail.c_ptr(), new_is_negated.c_ptr());
+            rule * new_rule = m_context.get_rule_manager().mk(new_head, new_tail.size(), new_tail.c_ptr(), new_is_negated.c_ptr(), r->name());
             new_rule->set_accounting_parent_object(m_context, m_current);
             m_result->add_rule(new_rule);
             m_context.get_rule_manager().mk_rule_rewrite_proof(*r, *new_rule);

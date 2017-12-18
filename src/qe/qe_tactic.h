@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _QE_TACTIC_H_
-#define _QE_TACTIC_H_
+#ifndef QE_TACTIC_H_
+#define QE_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

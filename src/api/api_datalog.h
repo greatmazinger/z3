@@ -16,27 +16,28 @@ Author:
 Revision History:
 
 --*/
-#ifndef _API_DATALOG_H_
-#define _API_DATALOG_H_
+#ifndef API_DATALOG_H_
+#define API_DATALOG_H_
 
-#include"z3.h"
-#include"ast.h"
-#include"smt_params.h"
-#include"smt_kernel.h"
-#include"api_util.h"
+#include "api/z3.h"
+#include "ast/ast.h"
+#include "smt/params/smt_params.h"
+#include "smt/smt_kernel.h"
+#include "api/api_util.h"
 
 typedef void (*reduce_app_callback_fptr)(void*, func_decl*, unsigned, expr*const*, expr**);
 typedef void (*reduce_assign_callback_fptr)(void*, func_decl*, unsigned, expr*const*, unsigned, expr*const*);
 
 namespace api {
     class fixedpoint_context;
+    class context;
 };
 
 
 struct Z3_fixedpoint_ref : public api::object {
     api::fixedpoint_context *   m_datalog;
     params_ref               m_params;
-    Z3_fixedpoint_ref():m_datalog(0) {}
+    Z3_fixedpoint_ref(api::context& c): api::object(c), m_datalog(0) {}
     virtual ~Z3_fixedpoint_ref() { dealloc(m_datalog); }
 };
 

@@ -17,12 +17,13 @@ Revision History:
 
 --*/
 
-#include "smt_context.h"
-#include "theory_array_full.h"
-#include "ast_ll_pp.h"
-#include "ast_pp.h"
-#include "ast_smt2_pp.h"
-#include "stats.h"
+#include "smt/smt_context.h"
+#include "smt/theory_array_full.h"
+#include "ast/ast_ll_pp.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_util.h"
+#include "ast/ast_smt2_pp.h"
+#include "util/stats.h"
 
 namespace smt {
 
@@ -33,6 +34,10 @@ namespace smt {
     theory_array_full::~theory_array_full() {
         std::for_each(m_var_data_full.begin(), m_var_data_full.end(), delete_proc<var_data_full>());
         m_var_data_full.reset();
+    }
+
+    theory* theory_array_full::mk_fresh(context* new_ctx) { 
+        return alloc(theory_array_full, new_ctx->get_manager(), m_params); 
     }
 
     void theory_array_full::add_map(theory_var v, enode* s) {
@@ -208,6 +213,8 @@ namespace smt {
         theory_array::reset_eh();
         std::for_each(m_var_data_full.begin(), m_var_data_full.end(), delete_proc<var_data_full>());
         m_var_data_full.reset();
+        m_eqs.reset();
+        m_eqsv.reset();
     }
 
     void theory_array_full::display_var(std::ostream & out, theory_var v) const {
@@ -223,7 +230,6 @@ namespace smt {
     }
     
     theory_var theory_array_full::mk_var(enode * n) {
-
         theory_var r = theory_array::mk_var(n);
         SASSERT(r == static_cast<int>(m_var_data_full.size()));
         m_var_data_full.push_back(alloc(var_data_full));
@@ -268,7 +274,7 @@ namespace smt {
         }
         context & ctx = get_context();
 
-        if (is_map(n)) {
+        if (is_map(n) || is_array_ext(n)) {
             for (unsigned i = 0; i < n->get_num_args(); ++i) {
                 enode* arg = ctx.get_enode(n->get_arg(i));
                 if (!is_attached_to_var(arg)) {
@@ -314,6 +320,10 @@ namespace smt {
             // The instantiation operations are still sound to include.
             found_unsupported_op(n);
             instantiate_default_as_array_axiom(node);
+        }
+        else if (is_array_ext(n)) {
+            SASSERT(n->get_num_args() == 2);
+            instantiate_extensionality(ctx.get_enode(n->get_arg(0)), ctx.get_enode(n->get_arg(1)));
         }
         return true;
     }
@@ -506,13 +516,14 @@ namespace smt {
 
         expr_ref sel1(m), sel2(m);
         sel1 = mk_select(args1.size(), args1.c_ptr());
-        m_simp->mk_app(f, args2.size(), args2.c_ptr(), sel2);
+        sel2 = m.mk_app(f, args2.size(), args2.c_ptr());
+        ctx.get_rewriter()(sel2);
         ctx.internalize(sel1, false);
         ctx.internalize(sel2, false);
         
         TRACE("array_map_bug",
               tout << "select-map axiom\n" << mk_ismt2_pp(sel1, m) << "\n=\n" << mk_ismt2_pp(sel2,m) << "\n";);
-        
+
         return try_assign_eq(sel1, sel2);
     }
 
@@ -527,6 +538,7 @@ namespace smt {
         SASSERT(is_map(mp));
                 
         app* map = mp->get_owner();
+        ast_manager& m = get_manager();
         context& ctx = get_context();
         if (!ctx.add_fingerprint(this, 0, 1, &mp)) {
             return false;
@@ -542,9 +554,9 @@ namespace smt {
             args2.push_back(mk_default(map->get_arg(i)));
         }
 
+        expr_ref def2(m.mk_app(f, args2.size(), args2.c_ptr()), m);
+        ctx.get_rewriter()(def2);
         expr* def1 = mk_default(map);
-        expr_ref def2(get_manager());
-        m_simp->mk_app(f, args2.size(), args2.c_ptr(), def2);
         ctx.internalize(def1, false);
         ctx.internalize(def2, false);
         return try_assign_eq(def1, def2);
@@ -713,9 +725,7 @@ namespace smt {
             }
             
             expr_ref eq(m);
-            simplifier_plugin* p = m_simp->get_plugin(m.get_basic_family_id());
-            basic_simplifier_plugin* bp = static_cast<basic_simplifier_plugin*>(p);
-            bp->mk_and(eqs.size(), eqs.c_ptr(), eq);
+            eq = mk_and(eqs);
             expr* defA = mk_default(store_app->get_arg(0));
             def2 = m.mk_ite(eq, store_app->get_arg(num_args-1), defA); 
 #if 0
@@ -760,37 +770,36 @@ namespace smt {
                     r = FC_CONTINUE;
             }
         }
+        while (!m_eqsv.empty()) {
+            literal eq = m_eqsv.back();
+            m_eqsv.pop_back();
+            get_context().mark_as_relevant(eq);            
+            assert_axiom(eq);
+            r = FC_CONTINUE;
+        }
         if (r == FC_DONE && m_found_unsupported_op)
             r = FC_GIVEUP;
         return r;
     }
 
+
     bool theory_array_full::try_assign_eq(expr* v1, expr* v2) {
-        context& ctx = get_context();
-        enode* n1 = ctx.get_enode(v1);
-        enode* n2 = ctx.get_enode(v2);
-        if (n1->get_root() == n2->get_root()) {
-            return false;
-        }
         TRACE("array", 
               tout << mk_bounded_pp(v1, get_manager()) << "\n==\n" 
               << mk_bounded_pp(v2, get_manager()) << "\n";);
-
-#if 0
-        if (m.proofs_enabled()) {
-#endif
-            literal eq(mk_eq(v1,v2,true));
-            ctx.mark_as_relevant(eq);
-            assert_axiom(eq);
-#if 0
+        
+        if (m_eqs.contains(v1, v2)) {
+            return false;
         }
         else {
-            ctx.mark_as_relevant(n1);
-            ctx.mark_as_relevant(n2);
-            ctx.assign_eq(n1, n2, eq_justification::mk_axiom());
+            m_eqs.insert(v1, v2, true);
+            literal eq(mk_eq(v1, v2, true));
+            get_context().mark_as_relevant(eq);            
+            assert_axiom(eq);
+
+            // m_eqsv.push_back(eq);
+            return true;
         }
-#endif
-        return true;
     }
 
     void theory_array_full::pop_scope_eh(unsigned num_scopes) {
@@ -798,6 +807,8 @@ namespace smt {
         theory_array::pop_scope_eh(num_scopes);
         std::for_each(m_var_data_full.begin() + num_old_vars, m_var_data_full.end(), delete_proc<var_data_full>());
         m_var_data_full.shrink(num_old_vars);        
+        m_eqs.reset();
+        m_eqsv.reset();
     }
 
     void theory_array_full::collect_statistics(::statistics & st) const {

@@ -16,15 +16,15 @@ Author:
 Notes:
 
 --*/
-#ifndef _BV2INT_REWRITER_H_
-#define _BV2INT_REWRITER_H_
+#ifndef BV2INT_REWRITER_H_
+#define BV2INT_REWRITER_H_
 
-#include"ast.h"
-#include"rewriter.h"
-#include"bv_decl_plugin.h"
-#include"arith_decl_plugin.h"
-#include"params.h"
-#include"goal.h"
+#include "ast/ast.h"
+#include "ast/rewriter/rewriter.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/arith_decl_plugin.h"
+#include "util/params.h"
+#include "tactic/goal.h"
 
 class bv2int_rewriter_ctx {
     unsigned                 m_max_size;
@@ -34,7 +34,7 @@ class bv2int_rewriter_ctx {
     
 public:
     bv2int_rewriter_ctx(ast_manager& m, params_ref const& p) : 
-        m_side_conditions(m), m_trail(m) { update_params(p); }
+        m_max_size(UINT_MAX), m_side_conditions(m), m_trail(m) { update_params(p); }
 
     void reset() { m_side_conditions.reset(); m_trail.reset(); m_power2.reset(); }
     void add_side_condition(expr* e) { m_side_conditions.push_back(e); }

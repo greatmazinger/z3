@@ -18,13 +18,13 @@ Revision History:
 --*/
 
 
-#include "pdr_context.h"
-#include "pdr_farkas_learner.h"
-#include "pdr_generalizers.h"
-#include "expr_abstract.h"
-#include "var_subst.h"
-#include "expr_safe_replace.h"
-#include "model_smt2_pp.h"
+#include "muz/pdr/pdr_context.h"
+#include "muz/pdr/pdr_farkas_learner.h"
+#include "muz/pdr/pdr_generalizers.h"
+#include "ast/expr_abstract.h"
+#include "ast/rewriter/var_subst.h"
+#include "ast/rewriter/expr_safe_replace.h"
+#include "model/model_smt2_pp.h"
 
 
 namespace pdr {
@@ -81,7 +81,7 @@ namespace pdr {
         m_gen(n, core0, uses_level1);
         new_cores.push_back(std::make_pair(core0, uses_level1));
         obj_hashtable<expr> core_exprs, core1_exprs;
-        datalog::set_union(core_exprs, core0);
+        set_union(core_exprs, core0);
         for (unsigned i = 0; i < old_core.size(); ++i) {
             expr* lit = old_core[i].get();             
             if (core_exprs.contains(lit)) {
@@ -94,8 +94,8 @@ namespace pdr {
                 if (core1.size() < old_core.size()) {
                     new_cores.push_back(std::make_pair(core1, uses_level1));
                     core1_exprs.reset();
-                    datalog::set_union(core1_exprs, core1);
-                    datalog::set_intersection(core_exprs, core1_exprs);
+                    set_union(core1_exprs, core1);
+                    set_intersection(core_exprs, core1_exprs);
                 }
             }
         }
@@ -117,9 +117,9 @@ namespace pdr {
     void core_farkas_generalizer::operator()(model_node& n, expr_ref_vector& core, bool& uses_level) {
         ast_manager& m  = n.pt().get_manager();
         if (core.empty()) return;
-        expr_ref A(m), B(qe::mk_and(core)), C(m);
+        expr_ref A(m), B(mk_and(core)), C(m);
         expr_ref_vector Bs(m);
-        qe::flatten_or(B, Bs);
+        flatten_or(B, Bs);
         A = n.pt().get_propagation_formula(m_ctx.get_pred_transformers(), n.level());
 
         bool change = false;
@@ -129,16 +129,16 @@ namespace pdr {
             if (m_farkas_learner.get_lemma_guesses(A, B, lemmas)) {
                 TRACE("pdr", 
                       tout << "Old core:\n" << mk_pp(B, m) << "\n";
-                      tout << "New core:\n" << mk_pp(qe::mk_and(lemmas), m) << "\n";);            
-                Bs[i] = qe::mk_and(lemmas);
+                      tout << "New core:\n" << mk_and(lemmas) << "\n";);            
+                Bs[i] = mk_and(lemmas);
                 change = true;
             }
         }
         if (change) {
-            C = qe::mk_or(Bs);
+            C = mk_or(Bs);
             TRACE("pdr", tout << "prop:\n" << mk_pp(A,m) << "\ngen:" << mk_pp(B, m) << "\nto: " << mk_pp(C, m) << "\n";);
             core.reset();
-            qe::flatten_and(C, core);    
+            flatten_and(C, core);    
             uses_level = true;
         }    
     }
@@ -186,11 +186,11 @@ namespace pdr {
         }        
         closure cl(n.pt(), m_is_closure);
 
-        expr_ref fml1 = qe::mk_and(core);        
+        expr_ref fml1 = mk_and(core);        
         expr_ref fml2 = n.pt().get_formulas(n.level(), false);
         fml1_2.push_back(fml1);
         fml1_2.push_back(0);
-        qe::flatten_and(fml2, fmls);
+        flatten_and(fml2, fmls);
         for (unsigned i = 0; i < fmls.size(); ++i) {
             fml2 = m.mk_not(fmls[i].get());
             fml1_2[1] = fml2;
@@ -205,7 +205,7 @@ namespace pdr {
             if (l_false == n.pt().is_reachable(nd, &conv2, uses_level1)) {
                 new_cores.push_back(std::make_pair(conv2, uses_level1));
                 change = true;
-                expr_ref state1 = qe::mk_and(conv2);
+                expr_ref state1 = mk_and(conv2);
                 TRACE("pdr", 
                       tout << mk_pp(state, m) << "\n";
                       tout << "Generalized to:\n" << mk_pp(state1, m) << "\n";);
@@ -558,7 +558,6 @@ namespace pdr {
         {
             expr_ref_vector conj(m), sub(m);
             expr_ref result(m);
-            ptr_vector<sort> sorts;
             svector<symbol> names;
             unsigned ut_size = rule.get_uninterpreted_tail_size();
             unsigned t_size = rule.get_tail_size();              
@@ -594,21 +593,20 @@ namespace pdr {
             for (unsigned i = ut_size; i < t_size; i++) {
                 conj.push_back(rule.get_tail(i));
             }         
-            result = qe::mk_and(conj);
+            result = mk_and(conj);
             if (!sub.empty()) {
                 expr_ref tmp = result;
                 var_subst(m, false)(tmp, sub.size(), sub.c_ptr(), result);
             }
-            get_free_vars(result, sorts);         
-            for (unsigned i = 0; i < sorts.size(); ++i) {
-                if (!sorts[i]) {
-                    sorts[i] = m.mk_bool_sort();
-                }
-                names.push_back(symbol(sorts.size() - i - 1));
+            expr_free_vars fv;
+            fv(result);
+            fv.set_default_sort(m.mk_bool_sort());
+            for (unsigned i = 0; i < fv.size(); ++i) {
+                names.push_back(symbol(fv.size() - i - 1));
             }
-            if (!sorts.empty()) {
-                sorts.reverse();
-                result = m.mk_exists(sorts.size(), sorts.c_ptr(), names.c_ptr(), result); 
+            if (!fv.empty()) {
+                fv.reverse();
+                result = m.mk_exists(fv.size(), fv.c_ptr(), names.c_ptr(), result); 
             }            
             return result;
         }
@@ -687,7 +685,7 @@ namespace pdr {
             for (unsigned i = 0; i < rules.size(); ++i) {
                 fmls.push_back(m.mk_not(mk_transition_rule(reps, level, *rules[i])));           
             }
-            fml = qe::mk_and(fmls);
+            fml = mk_and(fmls);
             TRACE("pdr", tout << mk_pp(fml, m) << "\n";);
             return fml;
         }
@@ -743,7 +741,7 @@ namespace pdr {
                 }                
             }
 
-            expr_ref result = qe::mk_and(conjs);
+            expr_ref result = mk_and(conjs);
             TRACE("pdr", tout << mk_pp(result, m) << "\n";);
             return result;
         }

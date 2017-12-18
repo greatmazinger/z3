@@ -16,38 +16,39 @@ Author:
 Revision History:
 
 --*/
-#ifndef _THEORY_ARITH_PP_H_
-#define _THEORY_ARITH_PP_H_
+#ifndef THEORY_ARITH_PP_H_
+#define THEORY_ARITH_PP_H_
 
-#include"theory_arith.h"
-#include"ast_smt_pp.h"
-#include"stats.h"
+#include "smt/theory_arith.h"
+#include "ast/ast_smt_pp.h"
+#include "util/stats.h"
 
 namespace smt {
     template<typename Ext>
     void theory_arith<Ext>::collect_statistics(::statistics & st) const {
         st.update("arith conflicts", m_stats.m_conflicts);
-        st.update("add rows", m_stats.m_add_rows);
-        st.update("pivots", m_stats.m_pivots);
-        st.update("assert lower", m_stats.m_assert_lower);
-        st.update("assert upper", m_stats.m_assert_upper);
-        st.update("assert diseq", m_stats.m_assert_diseq);
-        st.update("bound prop", m_stats.m_bound_props);
-        st.update("fixed eqs", m_stats.m_fixed_eqs);
-        st.update("offset eqs", m_stats.m_offset_eqs);
-        st.update("gcd tests", m_stats.m_gcd_tests);
-        st.update("ineq splits", m_stats.m_branches);
-        st.update("gomory cuts", m_stats.m_gomory_cuts);
-        st.update("max-min", m_stats.m_max_min);
-        st.update("grobner", m_stats.m_gb_compute_basis);
-        st.update("pseudo nonlinear", m_stats.m_nl_linear);
-        st.update("nonlinear bounds", m_stats.m_nl_bounds);
-        st.update("nonlinear horner", m_stats.m_nl_cross_nested);
+        st.update("arith add rows", m_stats.m_add_rows);
+        st.update("arith pivots", m_stats.m_pivots);
+        st.update("arith assert lower", m_stats.m_assert_lower);
+        st.update("arith assert upper", m_stats.m_assert_upper);
+        st.update("arith assert diseq", m_stats.m_assert_diseq);
+        st.update("arith bound prop", m_stats.m_bound_props);
+        st.update("arith fixed eqs", m_stats.m_fixed_eqs);
+        st.update("arith offset eqs", m_stats.m_offset_eqs);
+        st.update("arith gcd tests", m_stats.m_gcd_tests);
+        st.update("arith ineq splits", m_stats.m_branches);
+        st.update("arith gomory cuts", m_stats.m_gomory_cuts);
+        st.update("arith max-min", m_stats.m_max_min);
+        st.update("arith grobner", m_stats.m_gb_compute_basis);
+        st.update("arith pseudo nonlinear", m_stats.m_nl_linear);
+        st.update("arith nonlinear bounds", m_stats.m_nl_bounds);
+        st.update("arith nonlinear horner", m_stats.m_nl_cross_nested);
         m_arith_eq_adapter.collect_statistics(st);
     }
 
     template<typename Ext>
     void theory_arith<Ext>::display(std::ostream & out) const {
+        if (get_num_vars() == 0) return;
         out << "Theory arithmetic:\n";
         display_vars(out);
         display_nl_monomials(out);
@@ -395,9 +396,42 @@ namespace smt {
     template<typename Ext>
     void theory_arith<Ext>::display_bound(std::ostream & out, bound * b, unsigned indent) const {
         for (unsigned i = 0; i < indent; i++) out << "  ";
-        theory_var v = b->get_var();
-        enode * e    = get_enode(v);
-        out << "v" << v << " #" << e->get_owner_id() << " " << (b->get_bound_kind() == B_LOWER ? ">=" : "<=") << " " << b->get_value() << "\n";
+        b->display(*this, out);
+        out << "\n";
+    }
+
+    template<typename Ext>
+    std::ostream& theory_arith<Ext>::antecedents_t::display(theory_arith& th, std::ostream & out) const {
+        th.get_context().display_literals_verbose(out, lits().size(), lits().c_ptr());
+        if (!lits().empty()) out << "\n";
+        ast_manager& m = th.get_manager();
+        for (unsigned i = 0; i < m_eqs.size(); ++i) {
+            out << mk_pp(m_eqs[i].first->get_owner(), m) << " ";
+            out << mk_pp(m_eqs[i].second->get_owner(), m) << "\n";            
+        }
+        return out;
+    }
+
+    template<typename Ext>
+    void theory_arith<Ext>::display_deps(std::ostream & out, v_dependency* dep) {
+        ptr_vector<void> bounds;
+        m_dep_manager.linearize(dep, bounds);
+        m_tmp_lit_set.reset();
+        m_tmp_eq_set.reset();
+        ptr_vector<void>::const_iterator it  = bounds.begin();
+        ptr_vector<void>::const_iterator end = bounds.end();
+        for (; it != end; ++it) {
+            bound * b = static_cast<bound*>(*it);
+            out << " ";
+            b->display(*this, out);
+        }
+    }
+
+    template<typename Ext>
+    void theory_arith<Ext>::display_interval(std::ostream & out, interval const& i) {
+        i.display(out);
+        display_deps(out << " lo:", i.get_lower_dependencies());
+        display_deps(out << " hi:", i.get_upper_dependencies());
     }
 
     template<typename Ext>
@@ -428,7 +462,7 @@ namespace smt {
     template<typename Ext>
     void theory_arith<Ext>::display_atom(std::ostream & out, atom * a, bool show_sign) const {
         theory_var      v = a->get_var();
-        numeral const & k = a->get_k();
+        inf_numeral const & k = a->get_k();
         enode *         e = get_enode(v);
         if (show_sign) {
             if (!a->is_true()) 
@@ -492,7 +526,7 @@ namespace smt {
                 }
             }
         }
-        pp.display(out, m.mk_true());
+        pp.display_smt2(out, m.mk_true());
     }
 
     template<typename Ext>
@@ -512,5 +546,5 @@ namespace smt {
 
 };
 
-#endif /* _THEORY_ARITH_PP_H_ */
+#endif /* THEORY_ARITH_PP_H_ */
 

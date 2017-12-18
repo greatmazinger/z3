@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_SETUP_H_
-#define _SMT_SETUP_H_
+#ifndef SMT_SETUP_H_
+#define SMT_SETUP_H_
 
-#include"ast.h"
-#include"smt_params.h"
+#include "ast/ast.h"
+#include "smt/params/smt_params.h"
 
 struct static_features;
 namespace smt {
@@ -28,7 +28,7 @@ namespace smt {
     enum config_mode {
         CFG_BASIC,   // install theories based on user options
         CFG_LOGIC,   // install theories and configure Z3 based on the value of the parameter set-logic.
-        CFG_AUTO,    // install theories based on static features of the input formula
+        CFG_AUTO    // install theories based on static features of the input formula
     };
 
     class context;
@@ -42,7 +42,7 @@ namespace smt {
     class setup {
         context &          m_context;
         ast_manager &      m_manager;
-        smt_params & m_params;
+        smt_params &       m_params;
         symbol             m_logic;
         bool               m_already_configured;
         void setup_auto_config();
@@ -54,6 +54,7 @@ namespace smt {
         // setup_<logic>(static_features & st) can only be used if the logical context will perform a single 
         // check.
         // 
+        void setup_QF_DT();
         void setup_QF_UF();
         void setup_QF_UF(static_features const & st);
         void setup_QF_RDL();
@@ -65,6 +66,7 @@ namespace smt {
         void setup_QF_LRA();
         void setup_QF_LRA(static_features const & st);
         void setup_QF_LIA();
+        void setup_QF_LIRA(static_features const& st);
         void setup_QF_LIA(static_features const & st);
         void setup_QF_UFLIA();
         void setup_QF_UFLIA(static_features & st);
@@ -77,6 +79,7 @@ namespace smt {
         void setup_QF_AUFLIA(static_features const & st);
         void setup_QF_FP();
         void setup_QF_FPBV();
+        void setup_QF_S();
         void setup_LRA();
         void setup_AUFLIA(bool simple_array = true);
         void setup_AUFLIA(static_features const & st);
@@ -93,11 +96,14 @@ namespace smt {
         void setup_bv();
         void setup_arith();
         void setup_dl();
-        void setup_seq();        
-        void setup_instgen();
+        void setup_seq_str(static_features const & st);
+        void setup_seq();
+        void setup_card();
         void setup_i_arith();
         void setup_mi_arith();
+        void setup_r_arith();
         void setup_fpa();
+        void setup_str();
 
     public:
         setup(context & c, smt_params & params);
@@ -114,5 +120,5 @@ namespace smt {
     };
 };
 
-#endif /* _SMT_SETUP_H_ */
+#endif /* SMT_SETUP_H_ */
 

@@ -17,18 +17,17 @@ Notes:
 
 --*/
 
-#ifndef _SLS_TRACKER_H_
-#define _SLS_TRACKER_H_
+#ifndef SLS_TRACKER_H_
+#define SLS_TRACKER_H_
 
 #include<math.h>
+#include "ast/for_each_expr.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/bv_decl_plugin.h"
+#include "model/model.h"
 
-#include"for_each_expr.h"
-#include"ast_smt2_pp.h"
-#include"bv_decl_plugin.h"
-#include"model.h"
-
-#include"sls_params.hpp"
-#include"sls_powers.h"
+#include "tactic/sls/sls_params.hpp"
+#include "tactic/sls/sls_powers.h"
 
 class sls_tracker {
     ast_manager         & m_manager;
@@ -42,7 +41,24 @@ class sls_tracker {
         
     struct value_score { 
     value_score() : m(0), value(unsynch_mpz_manager::mk_z(0)), score(0.0), score_prune(0.0), has_pos_occ(0), has_neg_occ(0), distance(0), touched(1) {};
+        value_score(value_score && other) :
+            m(other.m),
+            value(std::move(other.value)),
+            score(other.score),
+            score_prune(other.score_prune),
+            has_pos_occ(other.has_pos_occ),
+            has_neg_occ(other.has_neg_occ),
+            distance(other.distance),
+            touched(other.touched) {}
         ~value_score() { if (m) m->del(value); }
+        void operator=(value_score && other) {
+            this->~value_score();
+            new (this) value_score(std::move(other));
+        }
+        value_score& operator=(value_score& other) {
+            UNREACHABLE();
+            return *this;
+        }
         unsynch_mpz_manager * m;
         mpz value;
         double score;
@@ -51,15 +67,6 @@ class sls_tracker {
         unsigned has_neg_occ;
         unsigned distance; // max distance from any root
         unsigned touched;
-        value_score & operator=(const value_score & other) {
-            SASSERT(m == 0 || m == other.m);
-            if (m) m->set(value, 0); else m = other.m;
-            m->set(value, other.value);
-            score = other.score;
-            distance = other.distance;
-            touched = other.touched;
-            return *this;
-        }
     };
 
 public:
@@ -69,7 +76,7 @@ private:
     typedef obj_map<expr, value_score> scores_type;    
     typedef obj_map<expr, ptr_vector<expr> > uplinks_type;    
     typedef obj_map<expr, ptr_vector<func_decl> > occ_type;
-    obj_hashtable<expr>	  m_top_expr;
+    obj_hashtable<expr>      m_top_expr;
     scores_type           m_scores;
     uplinks_type          m_uplinks;
     entry_point_type      m_entry_points;
@@ -86,11 +93,11 @@ private:
     unsigned              m_touched;
     double                m_scale_unsat;
     unsigned              m_paws_init;
-    obj_map<expr, unsigned>	m_where_false;
-    expr**					m_list_false;
+    obj_map<expr, unsigned>    m_where_false;
+    expr**                    m_list_false;
     unsigned              m_track_unsat;
     obj_map<expr, unsigned> m_weights;
-    double				  m_top_sum;
+    double                  m_top_sum;
     obj_hashtable<expr>   m_temp_seen;
 
 public:    
@@ -162,6 +169,19 @@ public:
 
     inline double get_top_sum() {
         return m_top_sum;
+    }
+
+    inline obj_hashtable<expr> const & get_top_exprs() {
+        return m_top_expr;
+    }
+
+    inline bool is_sat() {
+        for (obj_hashtable<expr>::iterator it = m_top_expr.begin();
+             it != m_top_expr.end();
+             it++)
+            if (!m_mpz_manager.is_one(get_value(*it)))
+                return false;
+        return true;
     }
 
     inline void set_value(expr * n, const mpz & r) {
@@ -282,7 +302,7 @@ public:
         if (!m_scores.contains(n)) {
             value_score vs;
             vs.m = & m_mpz_manager;
-            m_scores.insert(n, vs);
+            m_scores.insert(n, std::move(vs));
         }
 
         // Update uplinks
@@ -438,7 +458,7 @@ public:
             m_list_false = new expr*[sz];
             for (unsigned i = 0; i < sz; i++)
             {
-        	    if (m_mpz_manager.eq(get_value(as[i]), m_zero))
+                if (m_mpz_manager.eq(get_value(as[i]), m_zero))
                     break_assertion(as[i]);
             }
         }
@@ -450,9 +470,9 @@ public:
 
             // initialize weights
             if (!m_weights.contains(e))
-        		m_weights.insert(e, m_paws_init);
+                m_weights.insert(e, m_paws_init);
 
-            // positive/negative occurences used for early pruning
+            // positive/negative occurrences used for early pruning
             setup_occs(as[i]);
         }
 
@@ -512,6 +532,28 @@ public:
         for (unsigned i = 0; i < sz; i++) {
             func_decl * fd = get_constant(i);
             out << fd->get_name() << " = " << m_mpz_manager.to_string(get_value(fd)) << std::endl;
+        }
+    }
+
+    void set_model(model_ref const & mdl) {
+        for (unsigned i = 0; i < mdl->get_num_constants(); i++) {
+            func_decl * fd = mdl->get_constant(i);
+            expr * val = mdl->get_const_interp(fd);
+            if (m_entry_points.contains(fd)) {
+                if (m_manager.is_bool(val)) {
+                    set_value(fd, m_manager.is_true(val) ? m_mpz_manager.mk_z(1) : m_mpz_manager.mk_z(0));
+                }
+                else if (m_bv_util.is_numeral(val)) {
+                    rational r_val;
+                    unsigned bv_sz;
+                    m_bv_util.is_numeral(val, r_val, bv_sz);
+                    const mpq& q = r_val.to_mpq();
+                    SASSERT(m_mpz_manager.is_one(q.denominator()));
+                    set_value(fd, q.numerator());
+                }
+                else
+                    NOT_IMPLEMENTED_YET();
+            }
         }
     }
 
@@ -596,7 +638,7 @@ public:
         if (m_bv_util.is_bv_sort(s))
             return get_random_bv(s);
         else if (m_manager.is_bool(s))
-            return get_random_bool();
+            return m_mpz_manager.dup(get_random_bool());
         else
             NOT_IMPLEMENTED_YET(); // This only works for bit-vectors for now.
     }    
@@ -619,9 +661,7 @@ public:
         TRACE("sls", tout << "Abandoned model:" << std::endl; show_model(tout); );
 
         for (entry_point_type::iterator it = m_entry_points.begin(); it != m_entry_points.end(); it++) {
-            mpz temp = m_zero;
-            set_value(it->m_value, temp);
-            m_mpz_manager.del(temp);
+            set_value(it->m_value, m_zero);
         }
     }              
 
@@ -659,6 +699,9 @@ public:
                 else
                     m_scores.find(n).has_pos_occ = 1;
             }
+        }
+        else if (m_bv_util.is_bv(n)) {
+            /* CMW: I need this for optimization. Safe to ignore? */
         }
         else
             NOT_IMPLEMENTED_YET();
@@ -894,7 +937,7 @@ public:
             rational q;
             if (!m_bv_util.is_numeral(n, q, bv_sz))
                 NOT_IMPLEMENTED_YET();
-            mpq temp = q.to_mpq();
+            const mpq& temp = q.to_mpq();
             SASSERT(m_mpz_manager.is_one(temp.denominator()));
             m_mpz_manager.set(result, temp.numerator());
         }
@@ -1002,7 +1045,6 @@ public:
         unsigned pos = -1;
         if (m_ucb)
         {
-            value_score vscore;
             double max = -1.0;
             // Andreas: Commented things here might be used for track_unsat data structures as done in SLS for SAT. But seems to have no benefit.
             /* for (unsigned i = 0; i < m_where_false.size(); i++) {
@@ -1011,7 +1053,7 @@ public:
                 expr * e = as[i];
                 if (m_mpz_manager.neq(get_value(e), m_one))
                 {
-                    vscore = m_scores.find(e);
+                    value_score & vscore = m_scores.find(e);
                     // Andreas: Select the assertion with the greatest ucb score. Potentially add some noise.
                     // double q = vscore.score + m_ucb_constant * sqrt(log((double)m_touched) / vscore.touched);
                     double q = vscore.score + m_ucb_constant * sqrt(log((double)m_touched) / vscore.touched) + m_ucb_noise * get_random_uint(8); 
@@ -1038,7 +1080,7 @@ public:
 
             unsigned cnt_unsat = 0;
             for (unsigned i = 0; i < sz; i++)
-                if (m_mpz_manager.neq(get_value(as[i]), m_one) && (get_random_uint(16) % ++cnt_unsat == 0)) pos = i;	
+                if (m_mpz_manager.neq(get_value(as[i]), m_one) && (get_random_uint(16) % ++cnt_unsat == 0)) pos = i;    
             if (pos == static_cast<unsigned>(-1))
                 return 0;
         }
@@ -1055,7 +1097,7 @@ public:
         
         unsigned cnt_unsat = 0, pos = -1;
         for (unsigned i = 0; i < sz; i++)
-            if ((i != m_last_pos) && m_mpz_manager.neq(get_value(as[i]), m_one) && (get_random_uint(16) % ++cnt_unsat == 0)) pos = i;	
+            if ((i != m_last_pos) && m_mpz_manager.neq(get_value(as[i]), m_one) && (get_random_uint(16) % ++cnt_unsat == 0)) pos = i;
 
         if (pos == static_cast<unsigned>(-1))
             return 0;

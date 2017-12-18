@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _HORN_TACTIC_H_
-#define _HORN_TACTIC_H_
+#ifndef HORN_TACTIC_H_
+#define HORN_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

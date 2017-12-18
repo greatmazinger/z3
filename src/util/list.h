@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _LIST_H_
-#define _LIST_H_
+#ifndef LIST_H_
+#define LIST_H_
 
-#include"buffer.h"
-#include"region.h"
+#include "util/buffer.h"
+#include "util/region.h"
 
 template<typename T>
 class list {
@@ -92,5 +92,5 @@ list<T> * append(region & r, list<T> * l1, list<T> * l2) {
     return result;
 }
 
-#endif /* _LIST_H_ */
+#endif /* LIST_H_ */
 

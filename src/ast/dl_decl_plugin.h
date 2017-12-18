@@ -16,12 +16,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_DECL_PLUGIN_H_
-#define _DL_DECL_PLUGIN_H_
+#ifndef DL_DECL_PLUGIN_H_
+#define DL_DECL_PLUGIN_H_
 
-#include"ast.h"
-#include "arith_decl_plugin.h"
-#include "bv_decl_plugin.h"
+#include "ast/ast.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
 
 namespace datalog {
 
@@ -100,6 +100,7 @@ namespace datalog {
         sort * mk_rule_sort();
 
     public:
+
         dl_decl_plugin();
         virtual ~dl_decl_plugin() {}
 
@@ -214,5 +215,5 @@ namespace datalog {
     };
     
 };
-#endif /* _DL_DECL_PLUGIN_H_ */
+#endif /* DL_DECL_PLUGIN_H_ */
 

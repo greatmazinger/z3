@@ -17,21 +17,20 @@ Revision History:
 
 --*/
 
-#ifndef _PROP_SOLVER_H_
-#define _PROP_SOLVER_H_
+#ifndef PROP_SOLVER_H_
+#define PROP_SOLVER_H_
 
 #include <map>
 #include <string>
 #include <utility>
-#include "ast.h"
-#include "obj_hashtable.h"
-#include "smt_kernel.h"
-#include "util.h"
-#include "vector.h"
-#include "pdr_manager.h"
-#include "pdr_smt_context_manager.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
+#include "smt/smt_kernel.h"
+#include "util/util.h"
+#include "util/vector.h"
+#include "muz/pdr/pdr_manager.h"
+#include "muz/pdr/pdr_smt_context_manager.h"
 
-struct fixedpoint_params;
 
 namespace pdr {
     class prop_solver {
@@ -41,7 +40,6 @@ namespace pdr {
         ast_manager&        m;
         manager&            m_pm;
         symbol              m_name;
-        bool                m_try_minimize_core;
         scoped_ptr<pdr::smt_context> m_ctx;
         decl_vector         m_level_preds;      
         app_ref_vector      m_pos_level_atoms;  // atoms used to identify level
@@ -75,7 +73,7 @@ namespace pdr {
         
         
     public:
-        prop_solver(pdr::manager& pm, fixedpoint_params const& p, symbol const& name);
+        prop_solver(pdr::manager& pm, symbol const& name);
         
         /** return true is s is a symbol introduced by prop_solver */
         bool is_aux_symbol(func_decl * s) const { 

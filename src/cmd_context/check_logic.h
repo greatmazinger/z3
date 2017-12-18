@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _CHECK_LOGIC_H_
-#define _CHECK_LOGIC_H_
+#ifndef CHECK_LOGIC_H_
+#define CHECK_LOGIC_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 class check_logic {
     struct imp;

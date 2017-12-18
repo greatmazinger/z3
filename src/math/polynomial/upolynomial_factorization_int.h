@@ -23,10 +23,10 @@ Notes:
    [3] Henri Cohen. A Course in Computational Algebraic Number Theory. Springer Verlag, 1993.
 
 --*/
-#ifndef _UPOLYNOMIAL_FACTORIZATION_INT_H_
-#define _UPOLYNOMIAL_FACTORIZATION_INT_H_
+#ifndef UPOLYNOMIAL_FACTORIZATION_INT_H_
+#define UPOLYNOMIAL_FACTORIZATION_INT_H_
 
-#include"upolynomial_factorization.h"
+#include "math/polynomial/upolynomial_factorization.h"
 
 namespace upolynomial {
     // copy p from some manager to zp_p in Z_p[x]
@@ -45,7 +45,7 @@ namespace upolynomial {
         for (unsigned i = 0; i < p.size(); ++ i) {
             numeral p_i; // no need to delete, we keep it pushed in zp_p
             zp_nm.set(p_i, p[i]);
-            zp_p.push_back(p_i);
+            zp_p.push_back(std::move(p_i));
         }
         zp_upm.trim(zp_p);
     }

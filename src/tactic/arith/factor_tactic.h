@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _FACTOR_TACTIC_H_
-#define _FACTOR_TACTIC_H_
+#ifndef FACTOR_TACTIC_H_
+#define FACTOR_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

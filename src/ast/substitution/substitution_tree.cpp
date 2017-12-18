@@ -16,9 +16,9 @@ Author:
 Revision History:
 
 --*/
-#include"substitution_tree.h"
-#include"ast_pp.h"
-#include"ast_smt2_pp.h"
+#include "ast/substitution/substitution_tree.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_smt2_pp.h"
 
 /**
    \brief Return the next available register.
@@ -256,7 +256,7 @@ void substitution_tree::insert(expr * new_expr) {
         sort * s    = to_var(new_expr)->get_sort();
         unsigned id = s->get_decl_id();
         if (id >= m_vars.size())
-            m_vars.resize(id+1, 0);
+            m_vars.resize(id+1);
         if (m_vars[id] == 0)
             m_vars[id] = alloc(var_ref_vector, m_manager);
         var_ref_vector * v = m_vars[id];
@@ -277,7 +277,7 @@ void substitution_tree::insert(app * new_expr) {
     unsigned id   = d->get_decl_id();
     
     if (id >= m_roots.size()) 
-        m_roots.resize(id+1, 0);
+        m_roots.resize(id+1);
 
     if (!m_roots[id]) {
         // there is no tree for the function symbol heading new_expr
@@ -793,8 +793,10 @@ bool substitution_tree::visit(expr * e, st_visitor & st, node * r) {
                 }
                 else {
                     TRACE("st_bug", tout << "found match:\n"; m_subst->display(tout); tout << "m_subst: " << m_subst << "\n";);
-                    if (!st(n->m_expr))
+                    if (!st(n->m_expr)) {
+                        clear_stack();
                         return false;
+                    }
                     if (!backtrack())
                         break;
                 }
@@ -806,12 +808,16 @@ bool substitution_tree::visit(expr * e, st_visitor & st, node * r) {
         else if (!backtrack())
             break;
     }
+    clear_stack();
+    return true;
+}
+
+void substitution_tree::clear_stack() {
     while (!m_bstack.empty()) {
         m_subst->pop_scope();
         m_bstack.pop_back();
     }
     m_subst->pop_scope();
-    return true;
 }
 
 template<substitution_tree::st_visit_mode Mode>

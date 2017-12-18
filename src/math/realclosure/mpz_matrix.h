@@ -28,10 +28,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _MPZ_MATRIX_H_
-#define _MPZ_MATRIX_H_
+#ifndef MPZ_MATRIX_H_
+#define MPZ_MATRIX_H_
 
-#include"mpz.h"
+#include "util/mpz.h"
 
 /**
    \brief A mxn matrix. 

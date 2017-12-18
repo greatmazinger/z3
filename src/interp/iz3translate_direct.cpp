@@ -28,10 +28,10 @@
 #pragma warning(disable:4390)
 #endif
 
-#include "iz3translate.h"
-#include "iz3proof.h"
-#include "iz3profiling.h"
-#include "iz3interp.h"
+#include "interp/iz3translate.h"
+#include "interp/iz3proof.h"
+#include "interp/iz3profiling.h"
+#include "interp/iz3interp.h"
 
 #include <assert.h>
 #include <algorithm>
@@ -293,7 +293,7 @@ public:
                         ast neglit = mk_not(arg(con,i));
                         res.erase(neglit);
                     }
-                }	    
+                }        
             }
         }
 #if 0
@@ -332,7 +332,7 @@ public:
         }
     }
 
-    // get the lits of a Z3 clause as foci terms
+    // get the lits of a Z3 clause as secondary prover terms
     void get_Z3_lits(ast t, std::vector<ast> &lits){
         opr dk = op(t);
         if(dk == False)
@@ -362,6 +362,7 @@ public:
                     else
                         cls1.push_back(cls2[j]);
                 }
+                (void)found_pivot2;
                 assert(found_pivot2);
                 return;
             }
@@ -589,13 +590,15 @@ public:
             rng = range_glb(rng,ast_scope(lit));
         }
         if(range_is_empty(rng)) return -1;
-	int hi = range_max(rng);
+    int hi = range_max(rng);
         if(hi >= frames) return frames - 1;
         return hi;
     }
 
 
-    struct invalid_lemma {};
+    struct invalid_lemma: public iz3_exception {
+        invalid_lemma(): iz3_exception("invalid_lemma") {}
+    };
 
 
 
@@ -663,9 +666,9 @@ public:
 #endif 
 
         // interpolate using secondary prover
-        profiling::timer_start("foci");
+        profiling::timer_start("secondary prover");
         int sat = secondary->interpolate(preds,itps);
-        profiling::timer_stop("foci");
+        profiling::timer_stop("secondary prover");
 
         std::cout << "lemma done" << std::endl;
 
@@ -846,7 +849,9 @@ public:
             return 1;
     }
 
-    struct non_lit_local_ante {};
+    struct non_lit_local_ante: public iz3_exception {
+        non_lit_local_ante(): iz3_exception("non_lit_local_ante") {}
+    };
 
     bool local_antes_simple;
 
@@ -881,7 +886,7 @@ public:
            || dk == PR_QUANT_INST
            //|| dk == PR_UNIT_RESOLUTION
            //|| dk == PR_LEMMA
-	   )
+       )
             return false;
         if(dk == PR_HYPOTHESIS && hyps.find(con) != hyps.end())
             ; //std::cout << "blif!\n";
@@ -1481,7 +1486,7 @@ public:
                 AstSet dummy;
                 collect_resolvent_lits(nll->proofs[i],dummy,reslits);
                 litset.insert(reslits.begin(),reslits.end());
-            }	
+            }    
         }
         if(to_keep.size() == nll->proofs.size()) return nll;
         ResolventAppSet new_proofs;
@@ -1490,7 +1495,7 @@ public:
         return find_nll(new_proofs);
     }
 
-    // translate a Z3 proof term into a foci proof term
+    // translate a Z3 proof term into a secondary prover proof term
 
     Iproof::node translate_main(ast proof, non_local_lits *nll, bool expect_clause = true){
         non_local_lits *old_nll = nll;

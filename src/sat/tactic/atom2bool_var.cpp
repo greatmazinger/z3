@@ -16,10 +16,10 @@ Author:
 Notes:
 
 --*/
-#include"atom2bool_var.h"
-#include"ast_smt2_pp.h"
-#include"ref_util.h"
-#include"goal.h"
+#include "sat/tactic/atom2bool_var.h"
+#include "ast/ast_smt2_pp.h"
+#include "util/ref_util.h"
+#include "tactic/goal.h"
 
 void atom2bool_var::mk_inv(expr_ref_vector & lit2expr) const {
     obj_map<expr, var>::iterator it  = m_mapping.begin();
@@ -90,8 +90,22 @@ struct collect_boolean_interface_proc {
     template<typename T>
     void operator()(T const & g) {
         unsigned sz = g.size();
-        for (unsigned i = 0; i < sz; i++)
+        ptr_vector<expr> deps, all_deps;
+        for (unsigned i = 0; i < sz; i++) {
+            if (g.dep(i)) {
+                deps.reset();
+                m.linearize(g.dep(i), deps);
+                all_deps.append(deps);
+            }
+        }
+
+        for (unsigned i = 0; i < all_deps.size(); i++) {
+            quick_for_each_expr(proc, tvisited, all_deps[i]);
+        }
+        for (unsigned i = 0; i < sz; i++) {
             process(g.form(i));
+        }
+
     }
     
     void operator()(unsigned sz, expr * const * fs) {

@@ -17,14 +17,14 @@ Revision History:
 
 --*/
 #include<sstream>
-#include"mpz.h"
-#include"buffer.h"
-#include"trace.h"
-#include"hash.h"
-#include"bit_util.h"
+#include "util/mpz.h"
+#include "util/buffer.h"
+#include "util/trace.h"
+#include "util/hash.h"
+#include "util/bit_util.h"
 
 #if defined(_MP_INTERNAL)
-#include"mpn.h"
+#include "util/mpn.h"
 #elif defined(_MP_GMP)
 #include<gmp.h>
 #else
@@ -134,7 +134,7 @@ mpz_manager<SYNCH>::mpz_manager():
 #endif
     
     mpz one(1);
-    set(m_two64, UINT64_MAX);
+    set(m_two64, (uint64)UINT64_MAX);
     add(m_two64, one, m_two64);
 }
 
@@ -336,17 +336,17 @@ void mpz_manager<SYNCH>::set(mpz & target, unsigned sz, digit_t const * digits) 
             }
         }
 #else
-	mk_big(target);
-	// reset
-	mpz_set_ui(*target.m_ptr, digits[sz - 1]);
-	SASSERT(sz > 0);
-	unsigned i = sz - 1;
-	while (i > 0) {
-	  --i;
-	  mpz_mul_2exp(*target.m_ptr, *target.m_ptr, 32);
-	  mpz_set_ui(m_tmp, digits[i]);
-	  mpz_add(*target.m_ptr, *target.m_ptr, m_tmp);
-	}
+    mk_big(target);
+    // reset
+    mpz_set_ui(*target.m_ptr, digits[sz - 1]);
+    SASSERT(sz > 0);
+    unsigned i = sz - 1;
+    while (i > 0) {
+      --i;
+      mpz_mul_2exp(*target.m_ptr, *target.m_ptr, 32);
+      mpz_set_ui(m_tmp, digits[i]);
+      mpz_add(*target.m_ptr, *target.m_ptr, m_tmp);
+    }
 #endif        
     }
 }
@@ -558,14 +558,13 @@ void mpz_manager<SYNCH>::big_rem(mpz const & a, mpz const & b, mpz & c) {
 
 template<bool SYNCH>
 void mpz_manager<SYNCH>::gcd(mpz const & a, mpz const & b, mpz & c) {
-    if (is_small(a) && is_small(b)) {
+    static_assert(sizeof(a.m_val) == sizeof(int), "size mismatch");
+    if (is_small(a) && is_small(b) && a.m_val != INT_MIN && b.m_val != INT_MIN) {
         int _a = a.m_val;
         int _b = b.m_val;
         if (_a < 0) _a = -_a;
         if (_b < 0) _b = -_b;
         unsigned r = u_gcd(_a, _b);
-        // Remark: r is (INT_MAX + 1)
-        // If a == b == INT_MIN
         set(c, r);
     }
     else {
@@ -725,7 +724,7 @@ void mpz_manager<SYNCH>::gcd(mpz const & a, mpz const & b, mpz & c) {
 
 #ifdef LEHMER_GCD
         // For now, it only works if sizeof(digit_t) == sizeof(unsigned)
-        COMPILE_TIME_ASSERT(sizeof(digit_t) == sizeof(unsigned));
+        static_assert(sizeof(digit_t) == sizeof(unsigned), "");
         
         int64 a_hat, b_hat, A, B, C, D, T, q, a_sz, b_sz;
         mpz a1, b1, t, r, tmp;
@@ -1755,7 +1754,7 @@ void mpz_manager<SYNCH>::mul2k(mpz & a, unsigned k) {
 }
 
 #ifndef _MP_GMP
-COMPILE_TIME_ASSERT(sizeof(digit_t) == 4 || sizeof(digit_t) == 8);
+static_assert(sizeof(digit_t) == 4 || sizeof(digit_t) == 8, "");
 #endif
 
 template<bool SYNCH>
@@ -1822,7 +1821,7 @@ unsigned mpz_manager<SYNCH>::log2(mpz const & a) {
     if (is_small(a))
         return ::log2((unsigned)a.m_val);
 #ifndef _MP_GMP
-    COMPILE_TIME_ASSERT(sizeof(digit_t) == 8 || sizeof(digit_t) == 4);
+    static_assert(sizeof(digit_t) == 8 || sizeof(digit_t) == 4, "");
     mpz_cell * c     = a.m_ptr;
     unsigned sz      = c->m_size;
     digit_t * ds     = c->m_digits; 
@@ -1844,7 +1843,7 @@ unsigned mpz_manager<SYNCH>::mlog2(mpz const & a) {
     if (is_small(a))
         return ::log2((unsigned)-a.m_val);
 #ifndef _MP_GMP
-    COMPILE_TIME_ASSERT(sizeof(digit_t) == 8 || sizeof(digit_t) == 4);
+    static_assert(sizeof(digit_t) == 8 || sizeof(digit_t) == 4, "");
     mpz_cell * c     = a.m_ptr;
     unsigned sz      = c->m_size;
     digit_t * ds     = c->m_digits; 
@@ -2037,16 +2036,16 @@ bool mpz_manager<SYNCH>::decompose(mpz const & a, svector<digit_t> & digits) {
         }
         return a.m_val < 0;
 #else
-	bool r = is_neg(a);
-	mpz_set(m_tmp, *a.m_ptr);
-	mpz_abs(m_tmp, m_tmp);
-	while (mpz_sgn(m_tmp) != 0) {
-	  mpz_tdiv_r_2exp(m_tmp2, m_tmp, 32);
-	  unsigned v = mpz_get_ui(m_tmp2);
-	  digits.push_back(v);
-	  mpz_tdiv_q_2exp(m_tmp, m_tmp, 32);
-	}
-	return r;
+    bool r = is_neg(a);
+    mpz_set(m_tmp, *a.m_ptr);
+    mpz_abs(m_tmp, m_tmp);
+    while (mpz_sgn(m_tmp) != 0) {
+      mpz_tdiv_r_2exp(m_tmp2, m_tmp, 32);
+      unsigned v = mpz_get_ui(m_tmp2);
+      digits.push_back(v);
+      mpz_tdiv_q_2exp(m_tmp, m_tmp, 32);
+    }
+    return r;
 #endif
     }
 }

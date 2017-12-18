@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _MPBQI_H_
-#define _MPBQI_H_
+#ifndef MPBQI_H_
+#define MPBQI_H_
 
-#include"mpbq.h"
-#include"basic_interval.h"
+#include "util/mpbq.h"
+#include "util/basic_interval.h"
 
 class mpbqi_manager : public basic_interval_manager<mpbq_manager, false> {
     typedef basic_interval_manager<mpbq_manager, false> super;

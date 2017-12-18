@@ -18,12 +18,12 @@ Revision History:
 --*/
 
 
-#ifndef _REACHABLE_CACHE_H_
-#define _REACHABLE_CACHE_H_
-#include "ast.h"
-#include "ref_vector.h"
-#include "pdr_manager.h"
-#include "pdr_smt_context_manager.h"
+#ifndef REACHABLE_CACHE_H_
+#define REACHABLE_CACHE_H_
+#include "ast/ast.h"
+#include "util/ref_vector.h"
+#include "muz/pdr/pdr_manager.h"
+#include "muz/pdr/pdr_smt_context_manager.h"
 
 namespace pdr {
     class reachable_cache {

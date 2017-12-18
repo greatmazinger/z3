@@ -19,10 +19,10 @@ Notes:
 #include<sstream>
 #include<stdarg.h>
 #include<sstream>
-#include"z3_exception.h"
-#include"warning.h"
-#include"error_codes.h"
-#include"debug.h"
+#include "util/z3_exception.h"
+#include "util/warning.h"
+#include "util/error_codes.h"
+#include "util/debug.h"
 
 unsigned z3_exception::error_code() const { 
     return ERR_OK; 
@@ -49,6 +49,7 @@ char const * z3_error::msg() const {
     case ERR_CMD_LINE: return "invalid command line";
     case ERR_INTERNAL_FATAL: return "internal error";
     case ERR_TYPE_CHECK: return "type error";
+    case ERR_ALLOC_EXCEEDED: return "number of configured allocations exceeded";
     default: return "unknown error";
     }
 }
@@ -57,7 +58,7 @@ unsigned z3_error::error_code() const {
     return m_error_code; 
 }
 
-default_exception::default_exception(char const* msg, ...) {
+default_exception::default_exception(fmt, char const* msg, ...) {
     std::stringstream out;
     va_list args;
     va_start(args, msg);

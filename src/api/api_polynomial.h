@@ -16,10 +16,10 @@ Author:
 Notes:
     
 --*/
-#ifndef _API_POLYNOMIAL_H_
-#define _API_POLYNOMIAL_H_
+#ifndef API_POLYNOMIAL_H_
+#define API_POLYNOMIAL_H_
 
-#include"polynomial.h"
+#include "math/polynomial/polynomial.h"
 
 namespace api {
     
@@ -28,10 +28,9 @@ namespace api {
         polynomial::manager m_pm;
         // TODO: add support for caching expressions -> polynomial and back
     public:
-        pmanager();
+        pmanager(reslimit& limx);
         virtual ~pmanager();
         polynomial::manager & pm() { return m_pm; }
-        void set_cancel(bool f);
     };
 
 };

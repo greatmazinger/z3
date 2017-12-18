@@ -16,8 +16,8 @@ Author:
 Revision History:
 
 --*/
-#ifndef _OBJ_REF_H_
-#define _OBJ_REF_H_
+#ifndef OBJ_REF_H_
+#define OBJ_REF_H_
 
 /**
    Smart pointer for T objects.
@@ -51,6 +51,10 @@ public:
         m_obj(n.m_obj),
         m_manager(n.m_manager) {
         inc_ref();
+    }
+
+    obj_ref(obj_ref && other) : m_obj(0), m_manager(other.m_manager) {
+        std::swap(m_obj, other.m_obj);
     }
 
     ~obj_ref() { dec_ref(); }
@@ -136,4 +140,4 @@ inline void dec_range_ref(IT const & begin, IT const & end, TManager & m) {
     }
 }
 
-#endif /* _OBJ_REF_H_ */
+#endif /* OBJ_REF_H_ */

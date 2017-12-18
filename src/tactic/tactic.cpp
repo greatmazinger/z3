@@ -17,24 +17,11 @@ Notes:
 
 --*/
 #include<iomanip>
-#include"tactic.h"
-#include"probe.h"
-#include"stopwatch.h"
-#include"model_v2_pp.h"
+#include "tactic/tactic.h"
+#include "tactic/probe.h"
+#include "util/stopwatch.h"
+#include "model/model_v2_pp.h"
 
-void tactic::cancel() {
-    #pragma omp critical (tactic_cancel)
-    {
-        set_cancel(true);
-    }
-}
-
-void tactic::reset_cancel() {
-    #pragma omp critical (tactic_cancel)
-    {
-        set_cancel(false);
-    }
-}
 
 struct tactic_report::imp {
     char const *    m_id;
@@ -120,7 +107,7 @@ class report_verbose_tactic : public skip_tactic {
     unsigned     m_lvl;
 public:
     report_verbose_tactic(char const * msg, unsigned lvl) : m_msg(msg), m_lvl(lvl) {}
-    
+
     virtual void operator()(goal_ref const & in, 
                             goal_ref_buffer & result, 
                             model_converter_ref & mc, 
@@ -138,7 +125,7 @@ tactic * mk_report_verbose_tactic(char const * msg, unsigned lvl) {
 class trace_tactic : public skip_tactic {
     char const * m_tag;
 public:
-    trace_tactic(char const * tag):m_tag(tag) {}
+    trace_tactic(char const * tag): m_tag(tag) {}
     
     virtual void operator()(goal_ref const & in, 
                             goal_ref_buffer & result, 
@@ -146,6 +133,7 @@ public:
                             proof_converter_ref & pc,
                             expr_dependency_ref & core) {
         TRACE(m_tag, in->display(tout););
+        (void)m_tag;
         skip_tactic::operator()(in, result, mc, pc, core);
     }
 };
@@ -186,7 +174,8 @@ void exec(tactic & t, goal_ref const & in, goal_ref_buffer & result, model_conve
     }
 }
 
-lbool check_sat(tactic & t, goal_ref & g, model_ref & md, proof_ref & pr, expr_dependency_ref & core, std::string & reason_unknown) {
+
+lbool check_sat(tactic & t, goal_ref & g, model_ref & md, labels_vec & labels, proof_ref & pr, expr_dependency_ref & core, std::string & reason_unknown) {
     bool models_enabled = g->models_enabled();
     bool proofs_enabled = g->proofs_enabled();
     bool cores_enabled  = g->unsat_core_enabled();
@@ -207,10 +196,12 @@ lbool check_sat(tactic & t, goal_ref & g, model_ref & md, proof_ref & pr, expr_d
     TRACE("tactic_mc", mc->display(tout););
     TRACE("tactic_check_sat",
           tout << "r.size(): " << r.size() << "\n";
-          for (unsigned i = 0; i < r.size(); i++) r[0]->display(tout););
+          for (unsigned i = 0; i < r.size(); i++) r[i]->display(tout););
 
     if (is_decided_sat(r)) {
         if (models_enabled) {
+            if (mc)
+                (*mc)(labels, 0);
             model_converter2model(m, mc.get(), md);
             if (!md) {
                 // create empty model.
@@ -227,7 +218,11 @@ lbool check_sat(tactic & t, goal_ref & g, model_ref & md, proof_ref & pr, expr_d
         return l_false;
     }
     else {
-        if (models_enabled) model_converter2model(m, mc.get(), md);
+        if (models_enabled) {
+          model_converter2model(m, mc.get(), md);
+          if (mc)
+              (*mc)(labels, 0);
+        }
         reason_unknown = "incomplete";
         return l_undef;
     }

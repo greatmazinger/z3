@@ -16,24 +16,24 @@ Notes:
 
 --*/
 #include<sstream>
-#include"cmd_context.h"
-#include"cmd_util.h"
-#include"scoped_timer.h"
-#include"scoped_ctrl_c.h"
-#include"cancel_eh.h"
-#include"ast_smt2_pp.h"
-#include"expr2polynomial.h"
-#include"parametric_cmd.h"
-#include"mpq.h"
-#include"algebraic_numbers.h"
-#include"polynomial_var2value.h"
-#include"expr2var.h"
-#include"pp.h"
-#include"pp_params.hpp"
+#include "cmd_context/cmd_context.h"
+#include "cmd_context/cmd_util.h"
+#include "util/scoped_timer.h"
+#include "util/scoped_ctrl_c.h"
+#include "util/cancel_eh.h"
+#include "ast/ast_smt2_pp.h"
+#include "ast/expr2polynomial.h"
+#include "cmd_context/parametric_cmd.h"
+#include "util/mpq.h"
+#include "math/polynomial/algebraic_numbers.h"
+#include "math/polynomial/polynomial_var2value.h"
+#include "ast/expr2var.h"
+#include "ast/pp.h"
+#include "ast/pp_params.hpp"
 
 static void to_poly(cmd_context & ctx, expr * t) {
     polynomial::numeral_manager nm;
-    polynomial::manager pm(nm);
+    polynomial::manager pm(ctx.m().limit(), nm);
     default_expr2polynomial expr2poly(ctx.m(), pm);
     polynomial::polynomial_ref p(pm);
     polynomial::scoped_numeral d(nm);
@@ -52,7 +52,7 @@ static void to_poly(cmd_context & ctx, expr * t) {
 
 static void factor(cmd_context & ctx, expr * t, polynomial::factor_params const & ps) {
     polynomial::numeral_manager nm;
-    polynomial::manager pm(nm);
+    polynomial::manager pm(ctx.m().limit(), nm);
     default_expr2polynomial expr2poly(ctx.m(), pm);
     polynomial::polynomial_ref p(pm);
     polynomial::scoped_numeral d(nm);
@@ -83,6 +83,7 @@ static void factor(cmd_context & ctx, expr * t, polynomial::factor_params const 
 class poly_isolate_roots_cmd : public cmd {
     struct context {
         arith_util                  m_util;
+        reslimit                    m_lim;
         unsynch_mpq_manager         m_qm;
         polynomial::manager         m_pm;
         algebraic_numbers::manager  m_am;
@@ -94,8 +95,8 @@ class poly_isolate_roots_cmd : public cmd {
         
         context(ast_manager & m):
             m_util(m),
-            m_pm(m_qm),
-            m_am(m_qm),
+            m_pm(m.limit(), m_qm),
+            m_am(m_lim, m_qm),
             m_p(m_pm),
             m_expr2poly(m, m_pm),
             m_var(polynomial::null_var),

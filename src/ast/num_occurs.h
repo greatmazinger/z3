@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _NUM_OCCURS_H_
-#define _NUM_OCCURS_H_
+#ifndef NUM_OCCURS_H_
+#define NUM_OCCURS_H_
 
-#include"ast.h"
-#include"obj_hashtable.h"
+#include "ast/ast.h"
+#include "util/obj_hashtable.h"
 
 /**
    \brief Functor for computing the number of occurrences of each sub-expression in a expression F.
@@ -51,5 +51,5 @@ public:
     }
 };
 
-#endif /* _NUM_OCCURS_H_ */
+#endif /* NUM_OCCURS_H_ */
 

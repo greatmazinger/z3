@@ -17,10 +17,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DEFINED_NAMES_H_
-#define _DEFINED_NAMES_H_
+#ifndef DEFINED_NAMES_H_
+#define DEFINED_NAMES_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 /**
    \brief Mapping from expressions to skolem functions that are used to name them.
@@ -85,5 +85,5 @@ public:
     func_decl * get_name_decl(unsigned i) const;
 };
 
-#endif /* _DEFINED_NAMES_H_ */
+#endif /* DEFINED_NAMES_H_ */
 

@@ -16,28 +16,28 @@ Notes:
 
 --*/
 #include<sstream>
-#include"tactic_cmds.h"
-#include"cmd_context.h"
-#include"cmd_util.h"
-#include"parametric_cmd.h"
-#include"scoped_timer.h"
-#include"scoped_ctrl_c.h"
-#include"cancel_eh.h"
-#include"model_smt2_pp.h"
-#include"ast_smt2_pp.h"
-#include"tactic.h"
-#include"tactical.h"
-#include"probe.h"
-#include"check_sat_result.h"
-#include"cmd_context_to_goal.h"
-#include"echo_tactic.h"
+#include "cmd_context/tactic_cmds.h"
+#include "cmd_context/cmd_context.h"
+#include "cmd_context/cmd_util.h"
+#include "cmd_context/parametric_cmd.h"
+#include "util/scoped_timer.h"
+#include "util/scoped_ctrl_c.h"
+#include "util/cancel_eh.h"
+#include "model/model_smt2_pp.h"
+#include "ast/ast_smt2_pp.h"
+#include "tactic/tactic.h"
+#include "tactic/tactical.h"
+#include "tactic/probe.h"
+#include "solver/check_sat_result.h"
+#include "cmd_context/cmd_context_to_goal.h"
+#include "cmd_context/echo_tactic.h"
 
 tactic_cmd::~tactic_cmd() {
     dealloc(m_factory);
 }
 
 tactic * tactic_cmd::mk(ast_manager & m) {
-    return (*m_factory)(m, params_ref()); 
+    return (*m_factory)(m, params_ref());
 }
 
 probe_info::probe_info(symbol const & n, char const * d, probe * p):
@@ -62,12 +62,12 @@ public:
     virtual char const * get_descr(cmd_context & ctx) const { return "declare a new tactic, use (help-tactic) for the tactic language syntax."; }
     virtual unsigned get_arity() const { return 2; }
     virtual void prepare(cmd_context & ctx) { m_name = symbol::null; m_decl = 0; }
-    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const { 
+    virtual cmd_arg_kind next_arg_kind(cmd_context & ctx) const {
         if (m_name == symbol::null) return CPK_SYMBOL;
         return CPK_SEXPR;
     }
     virtual void set_next_arg(cmd_context & ctx, symbol const & s) { m_name = s; }
-    virtual void set_next_arg(cmd_context & ctx, sexpr * n) { m_decl = n; } 
+    virtual void set_next_arg(cmd_context & ctx, sexpr * n) { m_decl = n; }
     virtual void execute(cmd_context & ctx) {
         tactic_ref t = sexpr2tactic(ctx, m_decl); // make sure the tactic is well formed.
         ctx.insert_user_tactic(m_name, m_decl);
@@ -82,7 +82,7 @@ ATOMIC_CMD(get_user_tactics_cmd, "get-user-tactics", "display tactics defined us
     for (bool first = true; it != end; ++it) {
         if (first) first = false; else buf << "\n ";
         buf << "(declare-tactic " << it->m_key << " ";
-        it->m_value->display(buf); 
+        it->m_value->display(buf);
         buf << ")";
     }
     std::string r = buf.str();
@@ -94,10 +94,10 @@ void help_tactic(cmd_context & ctx) {
     std::ostringstream buf;
     buf << "combinators:\n";
     buf << "- (and-then <tactic>+) executes the given tactics sequencially.\n";
-    buf << "- (or-else <tactic>+) tries the given tactics in sequence until one of them succeeds.\n";
-    buf << "- (par-or <tactic>+) executes the given tactics in parallel until one of them succeeds.\n";
+    buf << "- (or-else <tactic>+) tries the given tactics in sequence until one of them succeeds (i.e., the first that doesn't fail).\n";
+    buf << "- (par-or <tactic>+) executes the given tactics in parallel until one of them succeeds (i.e., the first that doesn't fail).\n";
     buf << "- (par-then <tactic1> <tactic2>) executes tactic1 and then tactic2 to every subgoal produced by tactic1. All subgoals are processed in parallel.\n";
-    buf << "- (try-for <tactic> <num>) excutes the given tactic for at most <num> milliseconds, it fails if the execution takes more than <num> milliseconds.\n";
+    buf << "- (try-for <tactic> <num>) executes the given tactic for at most <num> milliseconds, it fails if the execution takes more than <num> milliseconds.\n";
     buf << "- (if <probe> <tactic> <tactic>) if <probe> evaluates to true, then execute the first tactic. Otherwise execute the second.\n";
     buf << "- (when <probe> <tactic>) shorthand for (if <probe> <tactic> skip).\n";
     buf << "- (fail-if <probe>) fail if <probe> evaluates to true.\n";
@@ -134,8 +134,8 @@ public:
     }
 
     virtual char const * get_usage() const { return "<tactic> (<keyword> <value>)*"; }
-    
-    virtual void prepare(cmd_context & ctx) { 
+
+    virtual void prepare(cmd_context & ctx) {
         parametric_cmd::prepare(ctx);
         m_tactic = 0;
     }
@@ -144,30 +144,42 @@ public:
         if (m_tactic == 0) return CPK_SEXPR;
         return parametric_cmd::next_arg_kind(ctx);
     }
-    
+
     virtual void set_next_arg(cmd_context & ctx, sexpr * arg) {
         m_tactic = arg;
     }
-    
+
     virtual void init_pdescrs(cmd_context & ctx, param_descrs & p) {
         insert_timeout(p);
         insert_max_memory(p);
         p.insert("print_statistics", CPK_BOOL, "(default: false) print statistics.");
     }
-    
+
     void display_statistics(cmd_context & ctx, tactic * t) {
         statistics stats;
-        unsigned long long max_mem = memory::get_max_used_memory();
-        unsigned long long mem = memory::get_allocation_size();
+        get_memory_statistics(stats);
+        get_rlimit_statistics(ctx.m().limit(), stats);
         stats.update("time", ctx.get_seconds());
-        stats.update("memory", static_cast<double>(mem)/static_cast<double>(1024*1024));
-        stats.update("max memory", static_cast<double>(max_mem)/static_cast<double>(1024*1024));
         t->collect_statistics(stats);
         stats.display_smt2(ctx.regular_stream());
     }
 };
 
-typedef simple_check_sat_result check_sat_tactic_result;
+struct check_sat_tactic_result : public simple_check_sat_result {
+public:
+  labels_vec labels;
+
+  check_sat_tactic_result(ast_manager & m) : simple_check_sat_result(m) {
+  }
+
+  virtual void get_labels(svector<symbol> & r) {
+    r.append(labels);
+  }
+
+  virtual void add_labels(svector<symbol> & r) {
+    labels.append(r);
+  }
+};
 
 class check_sat_using_tactict_cmd : public exec_given_tactic_cmd {
 public:
@@ -183,13 +195,18 @@ public:
         p.insert("print_proof", CPK_BOOL, "(default: false) print proof.");
         p.insert("print_model", CPK_BOOL, "(default: false) print model.");
     }
-    
+
     virtual void execute(cmd_context & ctx) {
+        if (!m_tactic) {
+            throw cmd_exception("check-sat-using needs a tactic argument");
+        }
         params_ref p = ctx.params().merge_default_params(ps());
         tactic_ref tref = using_params(sexpr2tactic(ctx, m_tactic), p);
         tref->set_logic(ctx.get_logic());
         ast_manager & m = ctx.m();
-        unsigned timeout   = p.get_uint("timeout", UINT_MAX);
+        unsigned timeout   = p.get_uint("timeout", ctx.params().m_timeout);
+        unsigned rlimit  =   p.get_uint("rlimit", ctx.params().m_rlimit);
+        labels_vec labels;
         goal_ref g = alloc(goal, m, ctx.produce_proofs(), ctx.produce_models(), ctx.produce_unsat_cores());
         assert_exprs_from(ctx, *g);
         TRACE("check_sat_using", g->display(tout););
@@ -201,20 +218,21 @@ public:
         ctx.set_check_sat_result(result.get());
         {
             tactic & t = *tref;
-            cancel_eh<tactic>  eh(t);
-            { 
+            cancel_eh<reslimit>  eh(m.limit());
+            {
+                scoped_rlimit _rlimit(m.limit(), rlimit);
                 scoped_ctrl_c ctrlc(eh);
                 scoped_timer timer(timeout, &eh);
                 cmd_context::scoped_watch sw(ctx);
                 lbool r = l_undef;
                 try {
-                    r = check_sat(t, g, md, pr, core, reason_unknown);
+                    r = check_sat(t, g, md, result->labels, pr, core, reason_unknown);                    
                     ctx.display_sat_result(r);
                     result->set_status(r);
                     if (r == l_undef) {
                         if (reason_unknown != "") {
                             result->m_unknown = reason_unknown;
-                            // ctx.diagnostic_stream() << "\"" << escaped(reason_unknown.c_str(), true) << "\"" << std::endl; 
+                            // ctx.diagnostic_stream() << "\"" << escaped(reason_unknown.c_str(), true) << "\"" << std::endl;
                         }
                         else {
                             result->m_unknown = "unknown";
@@ -233,23 +251,21 @@ public:
             }
             t.collect_statistics(result->m_stats);
         }
-        
+
         if (ctx.produce_unsat_cores()) {
             ptr_vector<expr> core_elems;
             m.linearize(core, core_elems);
             result->m_core.append(core_elems.size(), core_elems.c_ptr());
             if (p.get_bool("print_unsat_core", false)) {
                 ctx.regular_stream() << "(unsat-core";
-                ptr_vector<expr>::const_iterator it  = core_elems.begin();
-                ptr_vector<expr>::const_iterator end = core_elems.end();
-                for (; it != end; ++it) {
+                for (expr * e : core_elems) {
                     ctx.regular_stream() << " ";
-                    ctx.display(ctx.regular_stream(), *it);
+                    ctx.display(ctx.regular_stream(), e);
                 }
                 ctx.regular_stream() << ")" << std::endl;
             }
         }
-        
+
         if (ctx.produce_models() && md) {
             result->m_model = md;
             if (p.get_bool("print_model", false)) {
@@ -288,13 +304,14 @@ public:
 #endif
         p.insert("print_model_converter", CPK_BOOL, "(default: false) print model converter.");
         p.insert("print_benchmark", CPK_BOOL, "(default: false) display resultant goals as a SMT2 benchmark.");
-#ifndef _EXTERNAL_RELEASE
         p.insert("print_dependencies", CPK_BOOL, "(default: false) print dependencies when displaying the resultant set of goals.");
-#endif
         exec_given_tactic_cmd::init_pdescrs(ctx, p);
     }
-    
+
     virtual void execute(cmd_context & ctx) {
+        if (!m_tactic) {
+            throw cmd_exception("apply needs a tactic argument");
+        }
         params_ref p = ctx.params().merge_default_params(ps());
         tactic_ref tref = using_params(sexpr2tactic(ctx, m_tactic), p);
         {
@@ -302,9 +319,10 @@ public:
             ast_manager & m = ctx.m();
             goal_ref g = alloc(goal, m, ctx.produce_proofs(), ctx.produce_models(), ctx.produce_unsat_cores());
             assert_exprs_from(ctx, *g);
-            
-            unsigned timeout   = p.get_uint("timeout", UINT_MAX); 
-            
+
+            unsigned timeout   = p.get_uint("timeout", ctx.params().m_timeout);
+            unsigned rlimit  =   p.get_uint("rlimit", ctx.params().m_rlimit);
+
             goal_ref_buffer     result_goals;
             model_converter_ref mc;
             proof_converter_ref pc;
@@ -312,8 +330,9 @@ public:
 
             std::string reason_unknown;
             bool failed = false;
-            cancel_eh<tactic>  eh(t);
-            { 
+            cancel_eh<reslimit>  eh(m.limit());
+            {
+                scoped_rlimit _rlimit(m.limit(), rlimit);
                 scoped_ctrl_c ctrlc(eh);
                 scoped_timer timer(timeout, &eh);
                 cmd_context::scoped_watch sw(ctx);
@@ -325,7 +344,7 @@ public:
                     failed = true;
                 }
             }
-            
+
             if (!failed && p.get_bool("print", true)) {
                 bool print_dependencies = p.get_bool("print_dependencies", false);
                 ctx.regular_stream() << "(goals\n";
@@ -345,7 +364,7 @@ public:
             }
 #endif
 
-            if (!failed && p.get_bool("print_benchmark", false)) { 
+            if (!failed && p.get_bool("print_benchmark", false)) {
                 unsigned num_goals = result_goals.size();
                 SASSERT(num_goals > 0);
                 if (num_goals == 1) {
@@ -376,10 +395,10 @@ public:
                     ctx.display_smt2_benchmark(ctx.regular_stream(), 1, assertions);
                 }
             }
-            
-            if (!failed && mc && p.get_bool("print_model_converter", false)) 
+
+            if (!failed && mc && p.get_bool("print_model_converter", false))
                 mc->display(ctx.regular_stream());
-            
+
             if (p.get_bool("print_statistics", false))
                 display_statistics(ctx, tref.get());
         }
@@ -575,7 +594,7 @@ static tactic * mk_echo(cmd_context & ctx, sexpr * n) {
         sexpr * curr = n->get_child(i);
         bool last = (i == num_children - 1);
         tactic * t;
-        if (curr->is_string()) 
+        if (curr->is_string())
             t = mk_echo_tactic(ctx, curr->get_string().c_str(), last);
         else
             t = mk_probe_value_tactic(ctx, 0, sexpr2probe(ctx, curr), last);
@@ -703,11 +722,11 @@ tactic * sexpr2tactic(cmd_context & ctx, sexpr * n) {
     }
 }
 
-static probe * mk_not_probe (cmd_context & ctx, sexpr * n) {                                                         
-    SASSERT(n->is_composite());                                                                               
-    unsigned num_children = n->get_num_children();                                                            
-    if (num_children != 2)                                                                                    
-        throw cmd_exception("invalid probe expression, one argument expected", n->get_line(), n->get_pos()); 
+static probe * mk_not_probe (cmd_context & ctx, sexpr * n) {
+    SASSERT(n->is_composite());
+    unsigned num_children = n->get_num_children();
+    if (num_children != 2)
+        throw cmd_exception("invalid probe expression, one argument expected", n->get_line(), n->get_pos());
     return mk_not(sexpr2probe(ctx, n->get_child(1)));
 }
 
@@ -777,7 +796,7 @@ probe * sexpr2probe(cmd_context & ctx, sexpr * n) {
         if (!head->is_symbol())
             throw cmd_exception("invalid probe, symbol expected", n->get_line(), n->get_pos());
         symbol const & p_name = head->get_symbol();
-        
+
         if (p_name == "=")
             return mk_eq_probe(ctx, n);
         else if (p_name == "<=")
@@ -794,13 +813,13 @@ probe * sexpr2probe(cmd_context & ctx, sexpr * n) {
             return mk_or_probe(ctx, n);
         else if (p_name == "=>" || p_name == "implies")
             return mk_implies_probe(ctx, n);
-        else if (p_name == "not") 
+        else if (p_name == "not")
             return mk_not_probe(ctx, n);
         else if (p_name == "*")
             return mk_mul_probe(ctx, n);
-        else if (p_name == "+") 
+        else if (p_name == "+")
             return mk_add_probe(ctx, n);
-        else if (p_name == "-") 
+        else if (p_name == "-")
             return mk_sub_probe(ctx, n);
         else if (p_name == "/")
             return mk_div_probe(ctx, n);

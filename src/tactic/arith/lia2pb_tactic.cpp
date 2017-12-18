@@ -16,15 +16,15 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"bound_manager.h"
-#include"th_rewriter.h"
-#include"for_each_expr.h"
-#include"extension_model_converter.h"
-#include"filter_model_converter.h"
-#include"arith_decl_plugin.h"
-#include"expr_substitution.h"
-#include"ast_smt2_pp.h"
+#include "tactic/tactical.h"
+#include "tactic/arith/bound_manager.h"
+#include "ast/rewriter/th_rewriter.h"
+#include "ast/for_each_expr.h"
+#include "tactic/extension_model_converter.h"
+#include "tactic/filter_model_converter.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/expr_substitution.h"
+#include "ast/ast_smt2_pp.h"
 
 class lia2pb_tactic : public tactic {
     struct imp {
@@ -60,9 +60,6 @@ class lia2pb_tactic : public tactic {
             updt_params_core(p);
         }
         
-        void set_cancel(bool f) {
-            m_rw.set_cancel(f);
-        }
         
         bool is_target_core(expr * n, rational & u) {
             if (!is_uninterp_const(n))
@@ -191,11 +188,11 @@ class lia2pb_tactic : public tactic {
             return true;
         }
 
-        virtual void operator()(goal_ref const & g, 
-                                goal_ref_buffer & result, 
-                                model_converter_ref & mc, 
-                                proof_converter_ref & pc,
-                                expr_dependency_ref & core) {
+        void operator()(goal_ref const & g, 
+                        goal_ref_buffer & result, 
+                        model_converter_ref & mc, 
+                        proof_converter_ref & pc,
+                        expr_dependency_ref & core) {
             SASSERT(g->is_well_sorted());
             fail_if_proof_generation("lia2pb", g);
             m_produce_models      = g->models_enabled();
@@ -275,8 +272,9 @@ class lia2pb_tactic : public tactic {
                     }
                     TRACE("lia2pb", tout << mk_ismt2_pp(x, m) << " -> " << dep << "\n";);
                     subst.insert(x, def, 0, dep);
-                    if (m_produce_models)
+                    if (m_produce_models) {
                         mc1->insert(to_app(x)->get_decl(), def);
+                    }
                 }
             }
             
@@ -293,9 +291,12 @@ class lia2pb_tactic : public tactic {
                 m_rw(curr, new_curr, new_pr);
                 if (m_produce_unsat_cores) {
                     dep = m.mk_join(m_rw.get_used_dependencies(), g->dep(idx));
-                    m_rw.reset_used_dependencies();
+                    m_rw.reset_used_dependencies();                    
                 }
-                g->update(idx, new_curr, 0, dep);
+                if (m.proofs_enabled()) {
+                    new_pr  = m.mk_modus_ponens(g->pr(idx), new_pr);
+                }
+                g->update(idx, new_curr, new_pr, dep);
             }
             g->inc_depth();
             result.push_back(g.get());
@@ -346,18 +347,10 @@ public:
     
     virtual void cleanup() {
         imp * d = alloc(imp, m_imp->m, m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
+        std::swap(d, m_imp);        
         dealloc(d);
     }
 
-protected:
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
-    }
 };
 
 tactic * mk_lia2pb_tactic(ast_manager & m, params_ref const & p) {

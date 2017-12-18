@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_JUSTIFICATION_H_
-#define _SMT_JUSTIFICATION_H_
+#ifndef SMT_JUSTIFICATION_H_
+#define SMT_JUSTIFICATION_H_
 
-#include"ast.h"
-#include"smt_types.h"
-#include"smt_literal.h"
-#include"smt_eq_justification.h"
+#include "ast/ast.h"
+#include "smt/smt_types.h"
+#include "smt/smt_literal.h"
+#include "smt/smt_eq_justification.h"
 
 namespace smt {
     
@@ -181,6 +181,7 @@ namespace smt {
         enode *         m_node2;
     public:
         eq_propagation_justification(enode * n1, enode * n2):m_node1(n1), m_node2(n2) {
+            SASSERT(n1 != n2);
         }
 
         virtual void get_antecedents(conflict_resolution & cr);
@@ -225,6 +226,7 @@ namespace smt {
         virtual proof * mk_proof(conflict_resolution & cr) = 0;
 
         virtual char const * get_name() const { return "simple"; }
+
     };
 
     class simple_theory_justification : public simple_justification {
@@ -274,6 +276,7 @@ namespace smt {
 
 
         virtual char const * get_name() const { return "theory-propagation"; }
+        
     };
      
     class theory_conflict_justification : public simple_theory_justification {
@@ -408,5 +411,5 @@ namespace smt {
       
 };
 
-#endif /* _SMT_JUSTIFICATION_H_ */
+#endif /* SMT_JUSTIFICATION_H_ */
 

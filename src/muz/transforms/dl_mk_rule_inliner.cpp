@@ -48,11 +48,11 @@ Subsumption transformation (remove rule):
 
 
 #include <sstream>
-#include "ast_pp.h"
-#include "rewriter.h"
-#include "rewriter_def.h"
-#include "dl_mk_rule_inliner.h"
-#include "fixedpoint_params.hpp"
+#include "ast/ast_pp.h"
+#include "ast/rewriter/rewriter.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "muz/transforms/dl_mk_rule_inliner.h"
+#include "muz/base/fixedpoint_params.hpp"
 
 namespace datalog {
 
@@ -114,7 +114,10 @@ namespace datalog {
         apply(src, false, UINT_MAX,   tail, tail_neg);
         mk_rule_inliner::remove_duplicate_tails(tail, tail_neg);
         SASSERT(tail.size()==tail_neg.size());
-        res = m_rm.mk(new_head, tail.size(), tail.c_ptr(), tail_neg.c_ptr(), tgt.name(), m_normalize);
+        std::ostringstream comb_name;
+        comb_name << tgt.name().str() << ";" << src.name().str();
+        symbol combined_rule_name = symbol(comb_name.str().c_str());
+        res = m_rm.mk(new_head, tail.size(), tail.c_ptr(), tail_neg.c_ptr(), combined_rule_name, m_normalize);
         res->set_accounting_parent_object(m_context, const_cast<rule*>(&tgt));
         TRACE("dl",
               tgt.display(m_context,  tout << "tgt (" << tail_index << "): \n");
@@ -179,7 +182,7 @@ namespace datalog {
             if (m_context.generate_proof_trace()) {
                 expr_ref_vector s1 = m_unifier.get_rule_subst(tgt, true);
                 expr_ref_vector s2 = m_unifier.get_rule_subst(src, false);
-                datalog::resolve_rule(tgt, src, tail_index, s1, s2, *res.get());
+                datalog::resolve_rule(m_rm, tgt, src, tail_index, s1, s2, *res.get());
             }
             return true;        
         }
@@ -423,7 +426,7 @@ namespace datalog {
 
         for (unsigned i = 0; i < m_inlined_rules.get_num_rules(); ++i) {
             rule* r = m_inlined_rules.get_rule(i);
-            datalog::del_rule(m_mc, *r);
+            datalog::del_rule(m_mc, *r, true);
         }
     }
 
@@ -462,7 +465,7 @@ namespace datalog {
             }
         }
         if (modified) {
-            datalog::del_rule(m_mc, *r0);
+            datalog::del_rule(m_mc, *r0, true);
         }
 
         return modified;
@@ -485,9 +488,9 @@ namespace datalog {
         }
 
         if (something_done && m_mc) {
-            for (rule_set::iterator rit = orig.begin(); rit!=rend; ++rit) {
-                if (inlining_allowed(orig, (*rit)->get_decl())) {
-                    datalog::del_rule(m_mc, **rit);
+            for (rule* r : orig) {
+                if (inlining_allowed(orig, r->get_decl())) {
+                    datalog::del_rule(m_mc, *r, true);
                 }
             }
         }
@@ -577,7 +580,7 @@ namespace datalog {
                 // nothing unifies with the tail atom, therefore the rule is unsatisfiable
                 // (we can say this because relation pred doesn't have any ground facts either)
                 res = 0;
-                datalog::del_rule(m_mc, *r);
+                datalog::del_rule(m_mc, *r, false);
                 return true;
             }
             if (!is_oriented_rewriter(inlining_candidate, strat)) {
@@ -587,7 +590,7 @@ namespace datalog {
                 goto process_next_tail;
             }
             if (!try_to_inline_rule(*r, *inlining_candidate, ti, res)) {
-                datalog::del_rule(m_mc, *r);
+                datalog::del_rule(m_mc, *r, false);
                 res = 0;
             }
             return true;
@@ -644,7 +647,8 @@ namespace datalog {
               tout << " num unifiers: " << m_unifiers.size();
               tout << " num positions: " << m_positions.find(e).size() << "\n";
               output_predicate(m_context, to_app(e), tout); tout << "\n";);
-        return true;
+        // stop visitor when we have more than 1 unifier, since that's all we want.
+        return m_unifiers.size() <= 1;
     }
 
     void mk_rule_inliner::visitor::reset(unsigned sz) {
@@ -754,7 +758,7 @@ namespace datalog {
         valid.reset();
         valid.resize(sz, true);        
 
-        bool allow_branching = m_context.get_params().inline_linear_branch();
+        bool allow_branching = m_context.get_params().xform_inline_linear_branch();
 
         for (unsigned i = 0; i < sz; ++i) {
 
@@ -819,7 +823,7 @@ namespace datalog {
                 if (num_tail_unifiers == 1) {
                     TRACE("dl", tout << "setting invalid: " << j << "\n";);
                     valid.set(j, false);
-                    datalog::del_rule(m_mc, *r2);
+                    datalog::del_rule(m_mc, *r2, true);
                     del_rule(r2, j);
                 }
 
@@ -866,7 +870,7 @@ namespace datalog {
 
         scoped_ptr<rule_set> res = alloc(rule_set, m_context);
 
-        if (m_context.get_params().inline_eager()) {
+        if (m_context.get_params().xform_inline_eager()) {
             TRACE("dl", source.display(tout << "before eager inlining\n"););
             plan_inlining(source);            
             something_done = transform_rules(source, *res);            
@@ -884,7 +888,7 @@ namespace datalog {
             res = alloc(rule_set, source);
         }
 
-        if (m_context.get_params().inline_linear() && inline_linear(res)) {
+        if (m_context.get_params().xform_inline_linear() && inline_linear(res)) {
             something_done = true;
         }
 

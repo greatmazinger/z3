@@ -17,10 +17,10 @@ Author:
 Notes:
 
 --*/
-#ifndef _TSEITIN_CNF_TACTIC_H_
-#define _TSEITIN_CNF_TACTIC_H_
+#ifndef TSEITIN_CNF_TACTIC_H_
+#define TSEITIN_CNF_TACTIC_H_
 
-#include"params.h"
+#include "util/params.h"
 class ast_manager;
 class tactic;
 

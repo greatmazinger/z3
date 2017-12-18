@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DATALOG_PARSER_H_
-#define _DATALOG_PARSER_H_
+#ifndef DATALOG_PARSER_H_
+#define DATALOG_PARSER_H_
 
-#include "ast.h"
-#include "dl_context.h"
+#include "ast/ast.h"
+#include "muz/base/dl_context.h"
 
 namespace datalog {
 

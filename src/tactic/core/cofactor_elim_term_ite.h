@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _COFACTOR_ELIM_TERM_ITE_H_
-#define _COFACTOR_ELIM_TERM_ITE_H_
+#ifndef COFACTOR_ELIM_TERM_ITE_H_
+#define COFACTOR_ELIM_TERM_ITE_H_
 
-#include"ast.h"
-#include"params.h"
+#include "ast/ast.h"
+#include "util/params.h"
 
 class cofactor_elim_term_ite {
     struct     imp;
@@ -35,10 +35,7 @@ public:
 
     void operator()(expr * t, expr_ref & r);
     
-    void cancel() { set_cancel(true); }
-    void reset_cancel() { set_cancel(false); }
     void cleanup();
-    void set_cancel(bool f);
 
 };
 

@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _ARRAY_DECL_PLUGIN_H_
-#define _ARRAY_DECL_PLUGIN_H_
+#ifndef ARRAY_DECL_PLUGIN_H_
+#define ARRAY_DECL_PLUGIN_H_
 
-#include"ast.h"
+#include "ast/ast.h"
 
 
-inline sort* get_array_range(sort const * s) { 
+inline sort* get_array_range(sort const * s) {
     return to_sort(s->get_parameter(s->get_num_parameters() - 1).get_ast());
 }
 
@@ -35,14 +35,15 @@ inline sort* get_array_domain(sort const * s, unsigned idx) {
 }
 
 enum array_sort_kind {
-    ARRAY_SORT
+    ARRAY_SORT,
+    _SET_SORT
 };
 
 enum array_op_kind {
     OP_STORE,
     OP_SELECT,
     OP_CONST_ARRAY,
-    OP_ARRAY_EXT_SKOLEM,
+    OP_ARRAY_EXT,
     OP_ARRAY_DEFAULT,
     OP_ARRAY_MAP,
     OP_SET_UNION,
@@ -80,7 +81,7 @@ class array_decl_plugin : public decl_plugin {
 
     func_decl * mk_store(unsigned arity, sort * const * domain);
 
-    func_decl * mk_array_ext_skolem(unsigned arity, sort * const * domain, unsigned i);
+    func_decl * mk_array_ext(unsigned arity, sort * const * domain, unsigned i);
 
     func_decl * mk_set_union(unsigned arity, sort * const * domain);
 
@@ -104,20 +105,20 @@ class array_decl_plugin : public decl_plugin {
     }
 
     //
-    // Contract for sort: 
-    //   parameters[0]     - 1st dimension 
+    // Contract for sort:
+    //   parameters[0]     - 1st dimension
     //   ...
     //   parameters[n-1]   - nth dimension
     //   parameters[n]     - range
     //
     virtual sort * mk_sort(decl_kind k, unsigned num_parameters, parameter const * parameters);
-    
+
     //
     // Contract for func_decl:
     //   parameters[0]     - array sort
     // Contract for others:
     //   no parameters
-    virtual func_decl * mk_func_decl(decl_kind k, unsigned num_parameters, parameter const * parameters, 
+    virtual func_decl * mk_func_decl(decl_kind k, unsigned num_parameters, parameter const * parameters,
                                      unsigned arity, sort * const * domain, sort * range);
 
     virtual void get_op_names(svector<builtin_name> & op_names, symbol const & logic);
@@ -126,7 +127,7 @@ class array_decl_plugin : public decl_plugin {
 
     virtual expr * get_some_value(sort * s);
 
-    virtual bool is_fully_interp(sort const * s) const;
+    virtual bool is_fully_interp(sort * s) const;
 };
 
 class array_recognizers {
@@ -142,12 +143,13 @@ public:
     bool is_const(expr* n) const { return is_app_of(n, m_fid, OP_CONST_ARRAY); }
     bool is_map(expr* n) const { return is_app_of(n, m_fid, OP_ARRAY_MAP); }
     bool is_as_array(expr * n) const { return is_app_of(n, m_fid, OP_AS_ARRAY); }
+    bool is_as_array(expr * n, func_decl*& f) const { return is_as_array(n) && (f = get_as_array_func_decl(n), true); }
     bool is_select(func_decl* f) const { return is_decl_of(f, m_fid, OP_SELECT); }
     bool is_store(func_decl* f) const { return is_decl_of(f, m_fid, OP_STORE); }
     bool is_const(func_decl* f) const { return is_decl_of(f, m_fid, OP_CONST_ARRAY); }
     bool is_map(func_decl* f) const { return is_decl_of(f, m_fid, OP_ARRAY_MAP); }
     bool is_as_array(func_decl* f) const { return is_decl_of(f, m_fid, OP_AS_ARRAY); }
-    func_decl * get_as_array_func_decl(app * n) const;
+    func_decl * get_as_array_func_decl(expr * n) const;
 };
 
 class array_util : public array_recognizers {
@@ -181,11 +183,18 @@ public:
         return mk_const_array(s, m_manager.mk_true());
     }
 
+    func_decl * mk_array_ext(sort* domain, unsigned i);
+
     sort * mk_array_sort(sort* dom, sort* range) { return mk_array_sort(1, &dom, range); }
 
     sort * mk_array_sort(unsigned arity, sort* const* domain, sort* range);
+
+    app * mk_as_array(func_decl * f) {
+        parameter param(f);
+        return m_manager.mk_app(m_fid, OP_AS_ARRAY, 1, &param, 0, 0, 0);
+    }
 };
 
 
-#endif /* _ARRAY_DECL_PLUGIN_H_ */
+#endif /* ARRAY_DECL_PLUGIN_H_ */
 

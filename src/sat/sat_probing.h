@@ -17,12 +17,12 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SAT_PROBING_H_
-#define _SAT_PROBING_H_
+#ifndef SAT_PROBING_H_
+#define SAT_PROBING_H_
 
-#include"sat_types.h"
-#include"params.h"
-#include"statistics.h"
+#include "sat/sat_types.h"
+#include "util/params.h"
+#include "util/statistics.h"
 
 namespace sat {
 
@@ -69,7 +69,7 @@ namespace sat {
         void updt_params(params_ref const & p);
         static void collect_param_descrs(param_descrs & d);
 
-        void free_memory();
+        void finalize();
 
         void collect_statistics(statistics & st) const;
         void reset_statistics();

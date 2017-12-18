@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _STRUCT_FACTORY_H_
-#define _STRUCT_FACTORY_H_
+#ifndef STRUCT_FACTORY_H_
+#define STRUCT_FACTORY_H_
 
-#include"value_factory.h"
-#include"obj_hashtable.h"
+#include "smt/proto_model/value_factory.h"
+#include "util/obj_hashtable.h"
 
 class proto_model;
 
@@ -50,5 +50,5 @@ public:
     virtual void register_value(expr * array_value);
 };
 
-#endif /* _STRUCT_FACTORY_H_ */
+#endif /* STRUCT_FACTORY_H_ */
 

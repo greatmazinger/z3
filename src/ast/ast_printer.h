@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _AST_PRINTER_H_
-#define _AST_PRINTER_H_
+#ifndef AST_PRINTER_H_
+#define AST_PRINTER_H_
 
-#include"ast.h"
-#include"ast_smt2_pp.h"
+#include "ast/ast.h"
+#include "ast/ast_smt2_pp.h"
 
 class ast_printer {
 public:

@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _EUCLIDEAN_SOLVER_H_
-#define _EUCLIDEAN_SOLVER_H_
+#ifndef EUCLIDEAN_SOLVER_H_
+#define EUCLIDEAN_SOLVER_H_
 
-#include"mpq.h"
-#include"vector.h"
+#include "util/mpq.h"
+#include "util/vector.h"
 
 class euclidean_solver {
     struct imp;
@@ -95,10 +95,6 @@ public:
     */
     void normalize(unsigned num, mpz const * as, var const * xs, mpz const & c, mpz & a_prime, mpz & c_prime, justification_vector & js);
 
-    /**
-       \brief Set/Reset the cancel flag.
-    */
-    void set_cancel(bool f);
 
     void display(std::ostream & out) const;
 };

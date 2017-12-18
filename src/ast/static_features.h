@@ -16,15 +16,16 @@ Author:
 Revision History:
 
 --*/
-#ifndef _STATIC_FEATURES_H_
-#define _STATIC_FEATURES_H_
+#ifndef STATIC_FEATURES_H_
+#define STATIC_FEATURES_H_
 
-#include"ast.h"
-#include"arith_decl_plugin.h"
-#include"bv_decl_plugin.h"
-#include"array_decl_plugin.h"
-#include"fpa_decl_plugin.h"
-#include"map.h"
+#include "ast/ast.h"
+#include "ast/arith_decl_plugin.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/array_decl_plugin.h"
+#include "ast/fpa_decl_plugin.h"
+#include "ast/seq_decl_plugin.h"
+#include "util/map.h"
 
 struct static_features {
     ast_manager &            m_manager;
@@ -32,6 +33,7 @@ struct static_features {
     bv_util                  m_bvutil;
     array_util               m_arrayutil;
     fpa_util                 m_fpautil;
+    seq_util                 m_sequtil;
     family_id                m_bfid;
     family_id                m_afid;
     family_id                m_lfid;    
@@ -77,6 +79,8 @@ struct static_features {
     bool                     m_has_real;        //
     bool                     m_has_bv;          //
     bool                     m_has_fpa;         //
+    bool                     m_has_str;         // has String-typed terms
+    bool                     m_has_seq_non_str; // has non-String-typed Sequence terms
     bool                     m_has_arrays;      //
     rational                 m_arith_k_sum;     // sum of the numerals in arith atoms.
     unsigned                 m_num_arith_terms;
@@ -142,6 +146,8 @@ struct static_features {
         }
     }
 
+    bool arith_k_sum_is_small() const { return m_arith_k_sum < rational(INT_MAX / 8); }
+
     void inc_num_apps(func_decl const * d) { unsigned id = d->get_decl_id(); m_num_apps.reserve(id+1, 0); m_num_apps[id]++; }
     void inc_theory_terms(family_id fid) { m_num_theory_terms.reserve(fid+1, 0); m_num_theory_terms[fid]++; }
     void inc_theory_atoms(family_id fid) { m_num_theory_atoms.reserve(fid+1, 0); m_num_theory_atoms[fid]++; }
@@ -176,5 +182,5 @@ struct static_features {
 
 };
 
-#endif /* _STATIC_FEATURES_H_ */
+#endif /* STATIC_FEATURES_H_ */
 

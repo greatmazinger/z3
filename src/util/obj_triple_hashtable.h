@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _OBJ_TRIPLE_HASHTABLE_H_
-#define _OBJ_TRIPLE_HASHTABLE_H_
+#ifndef OBJ_TRIPLE_HASHTABLE_H_
+#define OBJ_TRIPLE_HASHTABLE_H_
 
-#include"hashtable.h"
+#include "util/hashtable.h"
 
 /**
    \brief Special entry for a hashtable of pairs of obj pointers (i.e.,
@@ -176,5 +176,5 @@ public:
     }
 };
 
-#endif /* _OBJ_TRIPLE_HASHTABLE_H_ */
+#endif /* OBJ_TRIPLE_HASHTABLE_H_ */
 

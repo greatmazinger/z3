@@ -1,3 +1,9 @@
+
+/*++
+Copyright (c) 2015 Microsoft Corporation
+
+--*/
+
 /**
 
 Example from Boogie:
@@ -45,11 +51,11 @@ Example from Boogie:
 ")
 */
 
-#include "dl_boogie_proof.h"
-#include "model_pp.h"
-#include "proof_utils.h"
-#include "ast_pp.h"
-#include "qe_util.h"
+#include "muz/base/dl_boogie_proof.h"
+#include "model/model_pp.h"
+#include "ast/proofs/proof_utils.h"
+#include "ast/ast_pp.h"
+#include "ast/ast_util.h"
 
 namespace datalog {
     
@@ -91,7 +97,7 @@ namespace datalog {
                 if (!m.is_implies(premise, l1, l2)) {
                     continue;
                 }
-                qe::flatten_and(l1, literals);
+                flatten_and(l1, literals);
                 positions2.reset();
                 premises2.reset();
                 premises2.push_back(premise);       

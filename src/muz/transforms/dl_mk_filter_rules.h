@@ -16,13 +16,13 @@ Author:
 Revision History:
 
 --*/
-#ifndef _DL_MK_FILTER_RULES_H_
-#define _DL_MK_FILTER_RULES_H_
+#ifndef DL_MK_FILTER_RULES_H_
+#define DL_MK_FILTER_RULES_H_
 
-#include"map.h"
+#include "util/map.h"
 
-#include"dl_rule_set.h"
-#include"dl_rule_transformer.h"
+#include "muz/base/dl_rule_set.h"
+#include "muz/base/dl_rule_transformer.h"
 
 namespace datalog {
 
@@ -83,5 +83,5 @@ namespace datalog {
 };
 
 
-#endif /* _DL_MK_FILTER_RULES_H_ */
+#endif /* DL_MK_FILTER_RULES_H_ */
 

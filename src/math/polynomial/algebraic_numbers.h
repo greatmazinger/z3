@@ -16,18 +16,19 @@ Author:
 Notes:
 
 --*/
-#ifndef _ALGEBRAIC_NUMBERS_H_
-#define _ALGEBRAIC_NUMBERS_H_
+#ifndef ALGEBRAIC_NUMBERS_H_
+#define ALGEBRAIC_NUMBERS_H_
 
-#include"rational.h"
-#include"mpq.h"
-#include"polynomial.h"
-#include"z3_exception.h"
-#include"scoped_numeral.h"
-#include"scoped_numeral_vector.h"
-#include"tptr.h"
-#include"statistics.h"
-#include"params.h"
+#include "util/rational.h"
+#include "util/mpq.h"
+#include "math/polynomial/polynomial.h"
+#include "util/z3_exception.h"
+#include "util/scoped_numeral.h"
+#include "util/scoped_numeral_vector.h"
+#include "util/tptr.h"
+#include "util/statistics.h"
+#include "util/params.h"
+#include "util/rlimit.h"
 
 class small_object_allocator;
 class mpbq_manager;
@@ -57,15 +58,11 @@ namespace algebraic_numbers {
         typedef _scoped_numeral<manager> scoped_numeral;
         typedef _scoped_numeral_vector<manager> scoped_numeral_vector;
 
-        manager(unsynch_mpq_manager & m, params_ref const & p = params_ref(), small_object_allocator * a = 0);
+        manager(reslimit& rl, unsynch_mpq_manager & m, params_ref const & p = params_ref(), small_object_allocator * a = 0);
         ~manager();
 
         static void get_param_descrs(param_descrs & r);
         static void collect_param_descrs(param_descrs & r) { get_param_descrs(r); }
-
-        void set_cancel(bool f);
-        void cancel() { set_cancel(true); }
-        void reset_cancel() { set_cancel(false); }
 
         void updt_params(params_ref const & p);
 

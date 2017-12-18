@@ -16,24 +16,22 @@ Author:
 Revision History:
 
 --*/
-#ifndef _THEORY_BV_H_
-#define _THEORY_BV_H_
+#ifndef THEORY_BV_H_
+#define THEORY_BV_H_
 
-#include"smt_theory.h"
-#include"theory_bv_params.h"
-#include"bit_blaster.h"
-#include"trail.h"
-#include"union_find.h"
-#include"simplifier.h"
-#include"bv_simplifier_plugin.h"
-#include"arith_decl_plugin.h"
-#include"arith_simplifier_plugin.h"
-#include"numeral_factory.h"
+#include "smt/smt_theory.h"
+#include "smt/params/theory_bv_params.h"
+#include "ast/rewriter/bit_blaster/bit_blaster.h"
+#include "util/trail.h"
+#include "util/union_find.h"
+#include "ast/arith_decl_plugin.h"
+#include "smt/proto_model/numeral_factory.h"
 
 namespace smt {
     
     struct theory_bv_stats {
         unsigned   m_num_diseq_static, m_num_diseq_dynamic, m_num_bit2core, m_num_th2core_eq, m_num_conflicts;
+        unsigned   m_num_eq_dynamic;
         void reset() { memset(this, 0, sizeof(theory_bv_stats)); }
         theory_bv_stats() { reset(); }
     };
@@ -111,7 +109,6 @@ namespace smt {
         theory_bv_params const & m_params;
         bv_util                  m_util;
         arith_util               m_autil;
-        simplifier *             m_simplifier;
         bit_blaster              m_bb;
         th_trail_stack           m_trail_stack;
         th_union_find            m_find;
@@ -124,8 +121,9 @@ namespace smt {
         typedef std::pair<numeral, unsigned> value_sort_pair;
         typedef pair_hash<obj_hash<numeral>, unsigned_hash> value_sort_pair_hash;
         typedef map<value_sort_pair, theory_var, value_sort_pair_hash, default_eq<value_sort_pair> > value2var;
-        value2var                m_fixed_var_table;
 
+        value2var                m_fixed_var_table;
+        
         literal_vector           m_tmp_literals;
         svector<var_pos>         m_prop_queue;
         bool                     m_approximates_large_bvs;
@@ -166,9 +164,11 @@ namespace smt {
         void find_wpos(theory_var v);
         friend class fixed_eq_justification;
         void fixed_var_eh(theory_var v);
+        void add_fixed_eq(theory_var v1, theory_var v2);
         bool get_fixed_value(theory_var v, numeral & result) const;
         void internalize_num(app * n);
         void internalize_add(app * n);
+        void internalize_sub(app * n);
         void internalize_mul(app * n);
         void internalize_udiv(app * n);
         void internalize_sdiv(app * n);
@@ -214,12 +214,6 @@ namespace smt {
         void assign_bit(literal consequent, theory_var v1, theory_var v2, unsigned idx, literal antecedent, bool propagate_eqc);
         void assert_int2bv_axiom(app* n);
         void assert_bv2int_axiom(app* n);
-        arith_simplifier_plugin & arith_simp() const {
-            SASSERT(m_simplifier != 0);
-            arith_simplifier_plugin * as = static_cast<arith_simplifier_plugin*>(m_simplifier->get_plugin(m_autil.get_family_id()));
-            SASSERT(as != 0);
-            return *as;
-        }
 
     protected:
         virtual void init(context * ctx);
@@ -236,6 +230,7 @@ namespace smt {
         virtual void pop_scope_eh(unsigned num_scopes);
         virtual final_check_status final_check_eh();
         virtual void reset_eh();
+        virtual bool include_func_interp(func_decl* f);
         svector<theory_var>   m_merge_aux[2]; //!< auxiliary vector used in merge_zero_one_bits
         bool merge_zero_one_bits(theory_var r1, theory_var r2);
 
@@ -252,7 +247,7 @@ namespace smt {
         theory_bv(ast_manager & m, theory_bv_params const & params, bit_blaster_params const & bb_params);
         virtual ~theory_bv();
         
-        virtual theory * mk_fresh(context * new_ctx) { return alloc(theory_bv, get_manager(), m_params, m_bb.get_params()); }
+        virtual theory * mk_fresh(context * new_ctx);
 
         virtual char const * get_name() const { return "bit-vector"; }
 
@@ -278,5 +273,5 @@ namespace smt {
     };
 };
 
-#endif /* _THEORY_BV_H_ */
+#endif /* THEORY_BV_H_ */
 

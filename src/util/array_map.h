@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _ARRAY_MAP_H_
-#define _ARRAY_MAP_H_
+#ifndef ARRAY_MAP_H_
+#define ARRAY_MAP_H_
 
-#include"vector.h"
-#include"optional.h"
+#include "util/vector.h"
+#include "util/optional.h"
 
 /**
    \brief Implements a mapping from Key to Data.
@@ -63,10 +63,7 @@ class array_map {
     }
 
     void really_flush() {
-        typename vector<optional<entry> >::iterator it  = m_map.begin();
-        typename vector<optional<entry> >::iterator end = m_map.end();
-        for (; it != end; ++it) {
-            optional<entry> & e = *it;
+        for (optional<entry> & e : m_map) {
             if (e) {
                 m_plugin.del_eh(e->m_key, e->m_data);
                 e.set_invalid();
@@ -159,4 +156,4 @@ public:
 
 };
 
-#endif /* _ARRAY_MAP_H_ */
+#endif /* ARRAY_MAP_H_ */

@@ -19,12 +19,12 @@ Author:
 Revision History:
 
 --*/
-#include"tactical.h"
-#include"bv_decl_plugin.h"
-#include"rewriter_def.h"
-#include"obj_pair_hashtable.h"
-#include"ast_lt.h"
-#include"cooperate.h"
+#include "tactic/tactical.h"
+#include "ast/bv_decl_plugin.h"
+#include "ast/rewriter/rewriter_def.h"
+#include "util/obj_pair_hashtable.h"
+#include "ast/ast_lt.h"
+#include "util/cooperate.h"
 
 class max_bv_sharing_tactic : public tactic {
     
@@ -235,11 +235,7 @@ class max_bv_sharing_tactic : public tactic {
         }
         
         ast_manager & m() const { return m_rw.m(); }
-        
-        void set_cancel(bool f) {
-            m_rw.set_cancel(f);
-        }
-        
+                
         void operator()(goal_ref const & g, 
                         goal_ref_buffer & result, 
                         model_converter_ref & mc, 
@@ -311,17 +307,10 @@ public:
     }
     
     virtual void cleanup() {
-        imp * d = alloc(imp, m_imp->m(), m_params);
-        #pragma omp critical (tactic_cancel)
-        {
-            std::swap(d, m_imp);
-        }
-        dealloc(d);
-    }
-
-    virtual void set_cancel(bool f) {
-        if (m_imp)
-            m_imp->set_cancel(f);
+        ast_manager & m = m_imp->m();
+        params_ref p = std::move(m_params);
+        m_imp->~imp();
+        new (m_imp) imp(m, p);
     }
 };
 

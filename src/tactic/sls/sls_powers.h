@@ -17,10 +17,10 @@ Notes:
 
 --*/
 
-#ifndef _SLS_POWERS_H_
-#define _SLS_POWERS_H_
+#ifndef SLS_POWERS_H_
+#define SLS_POWERS_H_
 
-#include"mpz.h"
+#include "util/mpz.h"
 
 class powers : public u_map<mpz*> {
     unsynch_mpz_manager & m;

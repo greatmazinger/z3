@@ -19,10 +19,10 @@ Revision History:
 --*/
 
 
-#ifndef __QE_SAT_H__
-#define __QE_SAT_H__
+#ifndef QE_SAT_H_
+#define QE_SAT_H_
 
-#include"tactic.h"
+#include "tactic/tactic.h"
 
 namespace qe {
         

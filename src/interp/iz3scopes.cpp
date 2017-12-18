@@ -21,7 +21,7 @@
 
 #include <algorithm>
 
-#include "iz3scopes.h"
+#include "interp/iz3scopes.h"
 
 
 /** computes the least common ancestor of two nodes in the tree, or SHRT_MAX if none */
@@ -97,7 +97,7 @@ namespace std {
 
 template <> inline
 size_t stdext::hash_value<scopes::range_lo >(const scopes::range_lo& p)
-{	
+{    
     std::hash<scopes::range_lo> h;
     return h(p);
 }
@@ -133,7 +133,7 @@ namespace std {
 
 template <> inline
 size_t stdext::hash_value<range_op >(const range_op& p)
-{	
+{    
     std::hash<range_op> h;
     return h(p);
 }

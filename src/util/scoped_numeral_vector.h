@@ -16,10 +16,10 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SCOPED_NUMERAL_VECTOR_H_
-#define _SCOPED_NUMERAL_VECTOR_H_
+#ifndef SCOPED_NUMERAL_VECTOR_H_
+#define SCOPED_NUMERAL_VECTOR_H_
 
-#include"vector.h"
+#include "util/vector.h"
 
 template<typename Manager>
 class _scoped_numeral_vector : public svector<typename Manager::numeral> {
@@ -46,6 +46,10 @@ public:
         m_manager.set(this->back(), v);
     }
 
+    void pop_back() {
+        shrink(this->size()-1);
+    }
+
     void shrink(unsigned sz) {
         unsigned old_sz = this->size();
         if (old_sz == sz)
@@ -59,8 +63,7 @@ public:
         unsigned old_sz = this->size();
         if (sz <= old_sz)
             shrink(sz);
-        typename Manager::numeral zero(0);
-        svector<typename Manager::numeral>::resize(sz, zero);
+        svector<typename Manager::numeral>::resize(sz, 0);
     }
 };
 

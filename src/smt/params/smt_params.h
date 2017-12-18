@@ -16,20 +16,22 @@ Author:
 Revision History:
 
 --*/
-#ifndef _SMT_PARAMS_H_
-#define _SMT_PARAMS_H_
+#ifndef SMT_PARAMS_H_
+#define SMT_PARAMS_H_
 
-#include"ast.h"
-#include"dyn_ack_params.h"
-#include"qi_params.h"
-#include"theory_arith_params.h"
-#include"theory_array_params.h"
-#include"theory_bv_params.h"
-#include"theory_datatype_params.h"
-#include"preprocessor_params.h"
-#include"context_params.h"
+#include "ast/ast.h"
+#include "smt/params/dyn_ack_params.h"
+#include "smt/params/qi_params.h"
+#include "smt/params/theory_arith_params.h"
+#include "smt/params/theory_array_params.h"
+#include "smt/params/theory_bv_params.h"
+#include "smt/params/theory_str_params.h"
+#include "smt/params/theory_pb_params.h"
+#include "smt/params/theory_datatype_params.h"
+#include "smt/params/preprocessor_params.h"
+#include "cmd_context/context_params.h"
 
-enum phase_selection { 
+enum phase_selection {
     PS_ALWAYS_FALSE,
     PS_ALWAYS_TRUE,
     PS_CACHING,
@@ -50,7 +52,8 @@ enum restart_strategy {
 enum lemma_gc_strategy {
     LGC_FIXED,
     LGC_GEOMETRIC,
-    LGC_AT_RESTART
+    LGC_AT_RESTART,
+    LGC_NONE
 };
 
 enum initial_activity {
@@ -66,14 +69,17 @@ enum case_split_strategy {
     CS_RELEVANCY, // case split based on relevancy
     CS_RELEVANCY_ACTIVITY, // case split based on relevancy and activity
     CS_RELEVANCY_GOAL, // based on relevancy and the current goal
+    CS_ACTIVITY_THEORY_AWARE_BRANCHING // activity-based case split, but theory solvers can manipulate activity
 };
 
-struct smt_params : public preprocessor_params, 
-                    public dyn_ack_params, 
-                    public qi_params, 
-                    public theory_arith_params, 
-                    public theory_array_params, 
-                    public theory_bv_params, 
+struct smt_params : public preprocessor_params,
+                    public dyn_ack_params,
+                    public qi_params,
+                    public theory_arith_params,
+                    public theory_array_params,
+                    public theory_bv_params,
+                    public theory_str_params,
+                    public theory_pb_params,
                     public theory_datatype_params {
     bool             m_display_proof;
     bool             m_display_dot_proof;
@@ -107,6 +113,8 @@ struct smt_params : public preprocessor_params,
     case_split_strategy m_case_split_strategy;
     unsigned            m_rel_case_split_order;
     bool                m_lookahead_diseq;
+    bool                m_theory_case_split;
+    bool                m_theory_aware_branching;
 
     // -----------------------------------
     //
@@ -146,20 +154,20 @@ struct smt_params : public preprocessor_params,
     unsigned          m_lemma_gc_initial;
     double            m_lemma_gc_factor;
     unsigned          m_new_old_ratio;     //!< the ratio of new and old clauses.
-    unsigned          m_new_clause_activity;  
+    unsigned          m_new_clause_activity;
     unsigned          m_old_clause_activity;
     unsigned          m_new_clause_relevancy; //!< Max. number of unassigned literals to be considered relevant.
     unsigned          m_old_clause_relevancy; //!< Max. number of unassigned literals to be considered relevant.
     double            m_inv_clause_decay;     //!< clause activity decay
-    
+
     // -----------------------------------
     //
     // SMT-LIB (debug) pretty printer
     //
     // -----------------------------------
     bool              m_smtlib_dump_lemmas;
-    std::string       m_smtlib_logic;
-    
+    symbol            m_logic;
+
     // -----------------------------------
     //
     // Statistics for Profiling
@@ -172,10 +180,10 @@ struct smt_params : public preprocessor_params,
 
     // -----------------------------------
     //
-    // Model generation 
+    // Model generation
     //
     // -----------------------------------
-    bool             m_model; 
+    bool             m_model;
     bool             m_model_compact;
     bool             m_model_on_timeout;
     bool             m_model_on_final_check;
@@ -193,6 +201,7 @@ struct smt_params : public preprocessor_params,
     //
     // -----------------------------------
     bool             m_display_installed_theories;
+    bool             m_core_validate;
 
     // -----------------------------------
     //
@@ -203,16 +212,33 @@ struct smt_params : public preprocessor_params,
     bool                m_user_theory_preprocess_axioms;
     bool                m_user_theory_persist_axioms;
     unsigned            m_timeout;
+    unsigned            m_rlimit;
     bool                m_at_labels_cex; // only use labels which contains the @ symbol when building multiple counterexamples.
-    bool                m_check_at_labels; // check that @ labels are inserted to generate unique counter-examples.    
+    bool                m_check_at_labels; // check that @ labels are inserted to generate unique counter-examples.
     bool                m_dump_goal_as_smt;
     bool                m_auto_config;
+
+    // -----------------------------------
+    //
+    // Spacer hacking
+    //
+    // -----------------------------------
+    bool                m_dump_benchmarks;
+    double              m_dump_min_time;
+    bool                m_dump_recheck;
+
+    // -----------------------------------
+    //
+    // Solver selection
+    //
+    // -----------------------------------
+    symbol m_string_solver;
 
     smt_params(params_ref const & p = params_ref()):
         m_display_proof(false),
         m_display_dot_proof(false),
         m_display_unsat_core(false),
-        m_check_proof(false), 
+        m_check_proof(false),
         m_eq_propagation(true),
         m_binary_clause_opt(true),
         m_relevancy_lvl(2),
@@ -235,6 +261,8 @@ struct smt_params : public preprocessor_params,
         m_case_split_strategy(CS_ACTIVITY_DELAY_NEW),
         m_rel_case_split_order(0),
         m_lookahead_diseq(false),
+        m_theory_case_split(false),
+        m_theory_aware_branching(false),
         m_delay_units(false),
         m_delay_units_threshold(32),
         m_theory_resolve(false),
@@ -252,11 +280,11 @@ struct smt_params : public preprocessor_params,
         m_new_old_ratio(16),
         m_new_clause_activity(10),
         m_old_clause_activity(500),
-        m_new_clause_relevancy(45), 
+        m_new_clause_relevancy(45),
         m_old_clause_relevancy(6),
         m_inv_clause_decay(1),
         m_smtlib_dump_lemmas(false),
-        m_smtlib_logic("AUFLIA"),
+        m_logic(symbol::null),
         m_profile_res_sub(false),
         m_display_bool_var2expr(false),
         m_display_ll_bool_var2expr(false),
@@ -267,14 +295,17 @@ struct smt_params : public preprocessor_params,
         m_model_on_final_check(false),
         m_progress_sampling_freq(0),
         m_display_installed_theories(false),
+        m_core_validate(false),
         m_preprocess(true), // temporary hack for disabling all preprocessing..
         m_user_theory_preprocess_axioms(false),
         m_user_theory_persist_axioms(false),
         m_timeout(0),
+        m_rlimit(0),
         m_at_labels_cex(false),
         m_check_at_labels(false),
         m_dump_goal_as_smt(false),
-        m_auto_config(true) {
+        m_auto_config(true),
+        m_string_solver(symbol("auto")){
         updt_local_params(p);
     }
 
@@ -283,7 +314,9 @@ struct smt_params : public preprocessor_params,
     void updt_params(params_ref const & p);
 
     void updt_params(context_params const & p);
+
+    void display(std::ostream & out) const;
 };
 
-#endif /* _SMT_PARAMS_H_ */
+#endif /* SMT_PARAMS_H_ */
 

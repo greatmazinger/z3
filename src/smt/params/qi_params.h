@@ -16,11 +16,11 @@ Author:
 Revision History:
 
 --*/
-#ifndef _QI_PARAMS_H_
-#define _QI_PARAMS_H_
+#ifndef QI_PARAMS_H_
+#define QI_PARAMS_H_
 
-#include"util.h"
-#include"params.h"
+#include "util/util.h"
+#include "util/params.h"
 
 enum quick_checker_mode {
     MC_NO,     // do not use (cheap) model checking based instantiation
@@ -98,14 +98,16 @@ struct qi_params {
         m_mbqi_max_cexs_incr(1),
         m_mbqi_max_iterations(1000),
         m_mbqi_trace(false),
-	m_mbqi_force_template(10),
+        m_mbqi_force_template(10),
         m_mbqi_id(0)  
     {
         updt_params(p);
     }
 
     void updt_params(params_ref const & p);
+
+    void display(std::ostream & out) const;
 };
 
-#endif /* _QI_PARAMS_H_ */
+#endif /* QI_PARAMS_H_ */
 

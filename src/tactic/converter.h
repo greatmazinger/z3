@@ -16,12 +16,12 @@ Author:
 Notes:
 
 --*/
-#ifndef _CONVERTER_H_
-#define _CONVERTER_H_
+#ifndef CONVERTER_H_
+#define CONVERTER_H_
 
-#include"vector.h"
-#include"ref.h"
-#include"ast_translation.h"
+#include "util/vector.h"
+#include "util/ref.h"
+#include "ast/ast_translation.h"
 
 class converter {
     unsigned m_ref_count;

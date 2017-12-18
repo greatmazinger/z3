@@ -16,11 +16,11 @@ Author:
 Notes:
 
 --*/
-#ifndef _AIG_H_
-#define _AIG_H_
+#ifndef AIG_H_
+#define AIG_H_
 
-#include"ast.h"
-#include"tactic_exception.h"
+#include "ast/ast.h"
+#include "tactic/tactic_exception.h"
 
 class goal;
 class aig_lit;
@@ -73,7 +73,6 @@ public:
     void display(std::ostream & out, aig_ref const & r) const;
     void display_smt2(std::ostream & out, aig_ref const & r) const;
     unsigned get_num_aigs() const;
-    void set_cancel(bool f);
 };
 
 #endif
